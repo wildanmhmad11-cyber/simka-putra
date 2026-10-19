@@ -1,6 +1,12 @@
 export type UserRole = 'MUSYRIF' | 'KOORDINATOR' | 'KASIE_KEPESANTRENAN';
 export type UnitPesantren = 'SMP' | 'MA' | 'SMA';
 export type UnitFilter = 'ALL' | 'SMP' | 'MA' | 'SMA';
+export type AppEnvironment = 'PUTRI' | 'PUTRA';
+
+export const APP_ENVIRONMENT: AppEnvironment = 
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_APP_ENVIRONMENT as AppEnvironment) ||
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_LINGKUNGAN as AppEnvironment) ||
+  'PUTRI';
 
 export interface UserAccount {
   id: string;
@@ -8,6 +14,7 @@ export interface UserAccount {
   username: string;
   role: UserRole;
   unit: 'ALL' | UnitPesantren;
+  lingkungan?: AppEnvironment | 'ALL';
   is_active: boolean;
   email?: string;
   title?: string;
@@ -22,6 +29,7 @@ export interface Santri {
   nama: string;
   kelas: string; // e.g. "7A", "8B", "10.1", "11.1", "12.3"
   unit: UnitPesantren;  // 'SMP' | 'MA' | 'SMA'
+  lingkungan?: AppEnvironment;
   totalPoin: number;
   musyrifId?: string;
   musyrifNama?: string;
@@ -29,6 +37,7 @@ export interface Santri {
   asrama?: string;
   keterangan?: string;
   kamar?: string;
+  statusPembinaan?: 'Baik' | 'Peringatan Lisan' | 'SP 1' | 'SP 2' | 'SP 3' | string;
 }
 
 export type PelanggaranKategori = 'Ringan' | 'Sedang' | 'Berat' | 'Sangat Berat' | 'Sangat Ringan';
@@ -68,6 +77,7 @@ export interface RiwayatPelanggaran {
   santriNama: string;
   santriKelas: string;
   santriUnit: UnitPesantren;
+  lingkungan?: AppEnvironment;
   jenisPelanggaranId: string;
   jenisPelanggaranNama: string;
   poin: number;
@@ -78,6 +88,9 @@ export interface RiwayatPelanggaran {
   catatan?: string;
   pencatat: string;
   pencatatId?: string;
+  diselesaikanPada?: string;
+  diselesaikanOleh?: string;
+  penyelesaiNama?: string;
 }
 
 export interface PembinaanRecord {
@@ -86,6 +99,7 @@ export interface PembinaanRecord {
   santriNama: string;
   santriKelas: string;
   santriUnit: UnitPesantren;
+  lingkungan?: AppEnvironment;
   pelanggaranTerkaitId?: string;
   pelanggaranTerkaitJenis?: string;
   jenisPembinaan: string; // 'Teguran/Nasihat' | 'Peringatan' | 'Tugas pembinaan' | 'Hafalan' | 'Kebersihan' | 'Konseling' | 'Surat Pernyataan' | 'Pemanggilan orang tua/wali' | 'Pembinaan khusus'
@@ -97,6 +111,52 @@ export interface PembinaanRecord {
   status: 'BELUM DIMULAI' | 'PROSES' | 'SELESAI';
   tanggalSelesai?: string;
   created_at: string;
+}
+
+export interface ActivityItem {
+  id: string;
+  type: 'pelanggaran' | 'pembinaan';
+  sourceId?: string; // Original ID of pelanggaran or pembinaan
+  title: string; // Baris judul: Pelanggaran: [Nama Santri] / Pembinaan: [Nama Santri]
+  santriId?: string;
+  santriNama: string;
+  santriKelas?: string;
+  unit: UnitPesantren;
+  lingkungan?: AppEnvironment;
+  
+  // Pelanggaran details
+  jenisPelanggaranNama?: string;
+  poin?: number;
+  pencatatNama?: string;
+  pencatatId?: string;
+
+  // Pembinaan details
+  jenisPembinaan?: string;
+  pembinaNama?: string;
+  pembinaId?: string;
+  statusPembinaan?: string;
+
+  // Formatted lines per specification
+  detailLine: string; // Baris detail: [Nama Jenis Pelanggaran] • [Jumlah Poin] poin / [Jenis Pembinaan]
+  infoPencatat: string; // Informasi pencatat: Dicatat oleh: [Nama Pengguna/Petugas] / Pembina: [Nama]
+  infoTambahan: string; // Informasi tambahan: Kelas [Kelas] • Unit [SMP/MA/SMA]
+  desc?: string; // Backwards compatibility for desc
+
+  timestamp: string; // ISO string for sorting
+  timeFormatted: string; // Tanggal dan jam sebenarnya: "18 Okt 2026, 12.55 WIB"
+}
+
+export interface HiddenNotificationRecord {
+  id: string;
+  activityId: string;
+  sourceId: string;
+  activityType: 'pelanggaran' | 'pembinaan';
+  unit: UnitPesantren;
+  lingkungan: AppEnvironment;
+  hiddenByUserId: string;
+  hiddenByNama: string;
+  hiddenByRole: string;
+  createdAt: string;
 }
 
 export type ThemeMode = 'light' | 'dark';

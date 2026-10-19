@@ -8,7 +8,10 @@ import {
   Pelanggaran, 
   PelanggaranKategori, 
   UserRole,
-  PembinaanRecord
+  PembinaanRecord,
+  AppEnvironment,
+  APP_ENVIRONMENT,
+  HiddenNotificationRecord
 } from '../types';
 import { 
   initialMasterPembinaanList, 
@@ -127,11 +130,20 @@ export function isSupabaseConfigured(): boolean {
 
 export function translateSupabaseError(error: any): string {
   if (!error) return 'Terjadi kesalahan sistem yang tidak diketahui.';
-  console.error('[SIMKA.ID DB Error Details]:', error);
 
   const msg = typeof error === 'string' 
     ? error 
     : error.message || error.error_description || error.details || error.hint || JSON.stringify(error);
+
+  // Silently ignore expected optional table misses
+  if (
+    error?.code === 'PGRST205' &&
+    msg.includes('hidden_notifications')
+  ) {
+    return 'Tabel hidden_notifications belum dibuat di Supabase.';
+  }
+
+  console.error('[SIMKA.ID DB Error Details]:', error);
 
   if (
     msg.includes('Invalid API key') || 
@@ -1026,6 +1038,7 @@ export async function fetchSantriFromDB(): Promise<Santri[] | null> {
       nama: String(row.nama || '').toUpperCase(),
       kelas: String(row.kelas || ''),
       unit: (row.unit as UnitPesantren) || 'SMP',
+      lingkungan: (row.lingkungan as AppEnvironment) || (row.kampus as AppEnvironment) || APP_ENVIRONMENT,
       totalPoin: 0, // Will be computed from violation logs
       statusPembinaan: row.status_pembinaan || 'Baik',
       musyrifNama: row.musyrif || row.musyrif_nama || undefined,
@@ -1070,6 +1083,7 @@ export async function insertSantriToDB(
         nama: santriData.nama.trim().toUpperCase(),
         kelas: santriData.kelas.trim(),
         unit: santriData.unit,
+        lingkungan: APP_ENVIRONMENT,
         totalPoin: 0,
         statusPembinaan: santriData.statusPembinaan || 'Baik',
         musyrifNama: santriData.musyrifNama,
@@ -1084,6 +1098,7 @@ export async function insertSantriToDB(
       nama: santriData.nama.trim().toUpperCase(),
       kelas: santriData.kelas.trim(),
       unit: santriData.unit,
+      lingkungan: APP_ENVIRONMENT,
       musyrif: santriData.musyrifNama?.trim() || null,
       asrama: santriData.asrama?.trim() || `Asrama ${santriData.unit}`,
       status_pembinaan: santriData.statusPembinaan || 'Baik'
@@ -1791,11 +1806,19 @@ export async function fetchPelanggaranFromDB(
     }
 
     const userMapById = new Map<string, UserAccount>();
+    const userMapByUsername = new Map<string, UserAccount>();
+    const userMapByName = new Map<string, UserAccount>();
     if (userDataset) {
       userDataset.forEach((u) => {
         if (u.id) {
           userMapById.set(String(u.id).trim(), u);
           userMapById.set(String(u.id).trim().toLowerCase(), u);
+        }
+        if (u.username) {
+          userMapByUsername.set(u.username.trim().toLowerCase(), u);
+        }
+        if (u.nama) {
+          userMapByName.set(u.nama.trim().toLowerCase(), u);
         }
       });
     }
@@ -1867,10 +1890,11 @@ export async function fetchPelanggaranFromDB(
         finalSantriKelas = (row.santri_kelas && row.santri_kelas !== '-') ? row.santri_kelas : '[Kelas Tidak Terdata]';
         finalSantriUnit = (row.santri_unit as UnitPesantren) || 'SMP';
       } else {
-        // Indicate accurately that relationship is missing, never use fake generic 'Santri'
-        finalSantriNama = rowSantriId ? `[Santri: ${rowSantriId}]` : '[Santri Tidak Terdaftar]';
+        // Honest indicator: never mask relational missing with fake generic 'Santri'
+        finalSantriNama = rowSantriId ? `[Santri ID: ${rowSantriId}]` : '[Santri Tidak Terdaftar]';
         finalSantriKelas = (row.santri_kelas && row.santri_kelas !== '-') ? row.santri_kelas : '[Kelas Tidak Terdata]';
         finalSantriUnit = (row.santri_unit as UnitPesantren) || 'SMP';
+        console.warn(`[SIMKA Relasi] Santri untuk pelanggaran record ${row.id} (santri_id: ${rowSantriId}) tidak ditemukan di tabel santri.`);
       }
 
       // Resolve Master Pelanggaran strictly from relationship
@@ -1897,17 +1921,35 @@ export async function fetchPelanggaranFromDB(
       } else if (rowPelanggaranNama && !rowPelanggaranNama.toLowerCase().includes('tata tertib') && rowPelanggaranNama !== '-') {
         finalJenisNama = rowPelanggaranNama;
       } else {
-        // Indicate accurately that violation relationship is missing, never use 'Pelanggaran Tata Tertib'
-        finalJenisNama = rowPelanggaranId ? `[Pelanggaran: ${rowPelanggaranId}]` : '[Pelanggaran Tidak Terdaftar]';
+        // Honest indicator: never mask relational missing with fake generic 'Pelanggaran Tata Tertib'
+        finalJenisNama = rowPelanggaranId ? `[Pelanggaran ID: ${rowPelanggaranId}]` : '[Pelanggaran Tidak Terdaftar]';
+        console.warn(`[SIMKA Relasi] Master pelanggaran record ${row.id} (pelanggaran_id: ${rowPelanggaranId}) tidak ditemukan di master_pelanggaran.`);
       }
 
-      // Resolve Pencatat / Pelapor
-      const matchedUser = rowPencatatId ? (userMapById.get(rowPencatatId) || userMapById.get(rowPencatatId.toLowerCase())) : undefined;
-      const finalPencatat = String(
-        matchedUser?.nama ||
-        (row.pencatat_nama && row.pencatat_nama !== 'Petugas' && row.pencatat_nama !== '-' ? row.pencatat_nama : '') ||
-        'Petugas'
-      );
+      // Resolve Pencatat / Pelapor strictly from users table or direct recorded name
+      let matchedUser = rowPencatatId ? (userMapById.get(rowPencatatId) || userMapById.get(rowPencatatId.toLowerCase())) : undefined;
+      if (!matchedUser && rowPencatatId) {
+        matchedUser = userMapByUsername.get(rowPencatatId.toLowerCase());
+      }
+      const rowPencatatNama = String(row.pencatat_nama || '').trim();
+      if (!matchedUser && rowPencatatNama && rowPencatatNama.toLowerCase() !== 'petugas' && rowPencatatNama !== '-') {
+        matchedUser = userMapByName.get(rowPencatatNama.toLowerCase());
+      }
+
+      let finalPencatat = '';
+      if (matchedUser) {
+        finalPencatat = matchedUser.nama;
+      } else if (rowPencatatNama && rowPencatatNama.toLowerCase() !== 'petugas' && rowPencatatNama !== '-') {
+        finalPencatat = rowPencatatNama;
+      } else if (rowPencatatId) {
+        finalPencatat = `Ust./Petugas (${rowPencatatId})`;
+        console.warn(`[SIMKA Relasi] Pencatat pelanggaran id ${rowPencatatId} tidak ditemukan di master users. Ditampilkan identitas ID.`);
+      } else {
+        finalPencatat = '[Pencatat Tidak Terdata]';
+        console.warn(`[SIMKA Relasi] Pencatat pelanggaran record ${row.id} tidak memiliki relasi user yang valid.`);
+      }
+
+      const rowLingkungan = (row.lingkungan as AppEnvironment) || (matchedSantri?.lingkungan as AppEnvironment) || APP_ENVIRONMENT;
 
       return {
         id: String(row.id),
@@ -1917,14 +1959,18 @@ export async function fetchPelanggaranFromDB(
         santriNama: finalSantriNama,
         santriKelas: finalSantriKelas,
         santriUnit: finalSantriUnit,
+        lingkungan: rowLingkungan,
         jenisPelanggaranId: rowPelanggaranId || (matchedMaster?.id ? String(matchedMaster.id) : ''),
         jenisPelanggaranNama: finalJenisNama,
         poin: finalPoin,
         hukuman: finalHukuman,
-        status: (row.status as 'Selesai' | 'Belum Selesai') || (finalPoin >= 50 ? 'Belum Selesai' : 'Selesai'),
+        status: ((row.status || '').trim() === 'Selesai') ? 'Selesai' : 'Belum Selesai',
         catatan: row.catatan || undefined,
         pencatat: finalPencatat,
-        pencatatId: rowPencatatId || undefined
+        pencatatId: rowPencatatId || undefined,
+        diselesaikanPada: row.diselesaikan_pada || undefined,
+        diselesaikanOleh: row.diselesaikan_oleh || undefined,
+        penyelesaiNama: row.penyelesai_nama || undefined
       };
     });
   } catch (err: any) {
@@ -1991,11 +2037,12 @@ export async function insertPelanggaranToDB(
     santriNama: data.santriNama,
     santriKelas: data.santriKelas,
     santriUnit: data.santriUnit,
+    lingkungan: APP_ENVIRONMENT,
     jenisPelanggaranId: data.jenisPelanggaranId.trim(),
     jenisPelanggaranNama: data.jenisPelanggaranNama,
     poin: Number(data.poin) || 0,
     hukuman: data.hukuman || '-',
-    status: (Number(data.poin) >= 50) ? 'Belum Selesai' : 'Selesai',
+    status: 'Belum Selesai',
     catatan: data.catatan,
     pencatat: data.pencatatNama,
     pencatatId: data.pencatatId
@@ -2030,7 +2077,8 @@ export async function insertPelanggaranToDB(
       santri_nama: data.santriNama,
       santri_kelas: data.santriKelas,
       jenis_pelanggaran_nama: data.jenisPelanggaranNama,
-      status: (Number(data.poin) >= 50) ? 'Belum Selesai' : 'Selesai'
+      lingkungan: APP_ENVIRONMENT,
+      status: 'Belum Selesai'
     };
 
     let currentPayload = { ...basePayload };
@@ -2136,28 +2184,97 @@ export async function insertPelanggaranToDB(
 /**
  * Updates the completion status of a violation in Supabase public.pelanggaran.
  * Preserves the existing ID and does not generate a new ID.
+ * Enforces role-based permissions and unit isolation strictly.
  */
 export async function updatePelanggaranStatusInDB(
   id: string,
-  status: 'Selesai' | 'Belum Selesai'
+  status: 'Selesai' | 'Belum Selesai',
+  actor?: {
+    id?: string;
+    nama?: string;
+    role: UserRole;
+    unit: string;
+  },
+  targetRecordUnit?: string
 ): Promise<{ success: boolean; error?: string }> {
   if (!id) {
     return { success: false, error: 'ID pelanggaran tidak valid.' };
   }
-  if (!isSupabaseConfigured()) return { success: true };
+
+  // 1. Strict Role Access Check: Only Koordinator and Kasie/Kabid/Superadmin are authorized
+  if (!actor) {
+    return { success: false, error: 'Akses Ditolak: Autentikasi diperlukan untuk mengubah status penyelesaian.' };
+  }
+
+  if (actor.role === 'MUSYRIF') {
+    return { success: false, error: 'Akses Ditolak: Musyrif tidak berwenang menandai pelanggaran sebagai selesai.' };
+  }
+
+  if (actor.role === 'KOORDINATOR') {
+    if (targetRecordUnit && actor.unit !== targetRecordUnit) {
+      return {
+        success: false,
+        error: `Akses Ditolak: Koordinator Unit ${actor.unit} hanya berwenang menandai pelanggaran santri Unit ${actor.unit}.`
+      };
+    }
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { success: true };
+  }
+
   try {
+    // If Koordinator and targetRecordUnit was not supplied in call, verify unit directly from DB first
+    if (actor.role === 'KOORDINATOR' && !targetRecordUnit) {
+      const { data: dbRec, error: fetchErr } = await supabase
+        .from('pelanggaran')
+        .select('santri_unit')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (!fetchErr && dbRec && dbRec.santri_unit && dbRec.santri_unit !== actor.unit) {
+        return {
+          success: false,
+          error: `Akses Ditolak: Koordinator Unit ${actor.unit} tidak berwenang menyelesaikan pelanggaran Unit ${dbRec.santri_unit}.`
+        };
+      }
+    }
+
+    const nowIso = new Date().toISOString();
+    const isSelesai = status === 'Selesai';
+    const payload: any = {
+      status,
+      updated_at: nowIso,
+      diselesaikan_pada: isSelesai ? nowIso : null,
+      diselesaikan_oleh: isSelesai && actor.id ? actor.id : null,
+      penyelesai_nama: isSelesai && actor.nama ? actor.nama : null
+    };
+
     let { error } = await supabase
       .from('pelanggaran')
-      .update({ status, updated_at: new Date().toISOString() })
+      .update(payload)
       .eq('id', id);
 
-    // Fallback if updated_at column is not present in the table
-    if (error && (error.message?.includes('updated_at') || error.message?.includes('Could not find'))) {
-      const retry = await supabase
+    // Fallback 1: If extra audit columns (diselesaikan_*) do not exist in the remote table
+    if (error && (error.message?.includes('column') || error.message?.includes('Could not find') || error.message?.includes('schema cache'))) {
+      const fallbackPayload: any = {
+        status,
+        updated_at: nowIso
+      };
+      const retryRes1 = await supabase
         .from('pelanggaran')
-        .update({ status })
+        .update(fallbackPayload)
         .eq('id', id);
-      error = retry.error;
+      error = retryRes1.error;
+
+      // Fallback 2: If updated_at also does not exist
+      if (error && (error.message?.includes('updated_at') || error.message?.includes('Could not find'))) {
+        const retryRes2 = await supabase
+          .from('pelanggaran')
+          .update({ status })
+          .eq('id', id);
+        error = retryRes2.error;
+      }
     }
 
     if (error) {
@@ -2166,6 +2283,7 @@ export async function updatePelanggaranStatusInDB(
     }
     return { success: true };
   } catch (err: any) {
+    console.error('[UPDATE STATUS PELANGGARAN EXCEPTION]', err);
     return { success: false, error: translateSupabaseError(err) };
   }
 }
@@ -2401,7 +2519,10 @@ export function findPembinaanBySinglePoin(
 // 6. PEMBINAAN RECORDS (public.pembinaan)
 // ==============================================================================
 
-export async function fetchPembinaanRecordsFromDB(): Promise<PembinaanRecord[] | null> {
+export async function fetchPembinaanRecordsFromDB(
+  knownSantri?: Santri[],
+  knownUsers?: UserAccount[]
+): Promise<PembinaanRecord[] | null> {
   if (!isSupabaseConfigured()) return null;
   try {
     const { data, error } = await supabase
@@ -2413,24 +2534,80 @@ export async function fetchPembinaanRecordsFromDB(): Promise<PembinaanRecord[] |
       return null;
     }
 
-    return data.map((row: any) => ({
-      id: String(row.id),
-      santriId: String(row.santri_id || ''),
-      santriNama: String(row.santri_nama || ''),
-      santriKelas: String(row.santri_kelas || ''),
-      santriUnit: (row.santri_unit as UnitPesantren) || 'SMP',
-      pelanggaranTerkaitId: row.pelanggaran_terkait_id ? String(row.pelanggaran_terkait_id) : undefined,
-      pelanggaranTerkaitJenis: row.pelanggaran_terkait_jenis || undefined,
-      jenisPembinaan: String(row.jenis_pembinaan || 'Teguran/Nasihat'),
-      tanggal: row.tanggal || new Date().toLocaleDateString('id-ID'),
-      tanggalTargetSelesai: row.tanggal_target_selesai || undefined,
-      pembina: String(row.pembina || 'Pembina'),
-      pembinaId: row.pembina_id ? String(row.pembina_id) : undefined,
-      catatan: String(row.catatan || ''),
-      status: (row.status as any) || 'BELUM DIMULAI',
-      tanggalSelesai: row.tanggal_selesai || undefined,
-      created_at: row.created_at || new Date().toISOString()
-    }));
+    const santriMap = new Map<string, Santri>();
+    if (knownSantri) {
+      knownSantri.forEach((s) => {
+        if (s.id) santriMap.set(String(s.id).trim().toLowerCase(), s);
+      });
+    }
+
+    const userMap = new Map<string, UserAccount>();
+    if (knownUsers) {
+      knownUsers.forEach((u) => {
+        if (u.id) userMap.set(String(u.id).trim().toLowerCase(), u);
+        if (u.username) userMap.set(u.username.trim().toLowerCase(), u);
+      });
+    }
+
+    return data.map((row: any) => {
+      const sId = String(row.santri_id || '').trim().toLowerCase();
+      const matchedSantri = sId ? santriMap.get(sId) : undefined;
+
+      const pId = String(row.pembina_id || '').trim().toLowerCase();
+      const matchedUser = pId ? userMap.get(pId) : undefined;
+
+      const rawSantriNama = String(row.santri_nama || '').trim();
+      let finalSantriNama = '';
+      if (rawSantriNama && rawSantriNama.toLowerCase() !== 'santri' && rawSantriNama !== '-') {
+        finalSantriNama = rawSantriNama;
+      } else if (matchedSantri) {
+        finalSantriNama = matchedSantri.nama;
+      } else if (row.santri_id) {
+        finalSantriNama = `[Santri ID: ${row.santri_id}]`;
+      } else {
+        finalSantriNama = '[Santri Tidak Terdaftar]';
+      }
+
+      const finalKelas = (row.santri_kelas && row.santri_kelas !== '-') 
+        ? row.santri_kelas 
+        : (matchedSantri?.kelas || '[Kelas Tidak Terdata]');
+
+      const finalUnit = (row.santri_unit as UnitPesantren) || (matchedSantri?.unit as UnitPesantren) || 'SMP';
+
+      const rawPembina = String(row.pembina || '').trim();
+      let finalPembina = '';
+      if (rawPembina && rawPembina.toLowerCase() !== 'pembina' && rawPembina !== '-') {
+        finalPembina = rawPembina;
+      } else if (matchedUser) {
+        finalPembina = matchedUser.nama;
+      } else if (row.pembina_id) {
+        finalPembina = `[Pembina ID: ${row.pembina_id}]`;
+      } else {
+        finalPembina = '[Pembina Belum Ditentukan]';
+      }
+
+      const rowLingkungan = (row.lingkungan as AppEnvironment) || (matchedSantri?.lingkungan as AppEnvironment) || APP_ENVIRONMENT;
+
+      return {
+        id: String(row.id),
+        santriId: String(row.santri_id || (matchedSantri?.id ? String(matchedSantri.id) : '')),
+        santriNama: finalSantriNama,
+        santriKelas: finalKelas,
+        santriUnit: finalUnit,
+        lingkungan: rowLingkungan,
+        pelanggaranTerkaitId: row.pelanggaran_terkait_id ? String(row.pelanggaran_terkait_id) : undefined,
+        pelanggaranTerkaitJenis: row.pelanggaran_terkait_jenis || undefined,
+        jenisPembinaan: String(row.jenis_pembinaan || 'Teguran/Nasihat'),
+        tanggal: row.tanggal || new Date().toLocaleDateString('id-ID'),
+        tanggalTargetSelesai: row.tanggal_target_selesai || undefined,
+        pembina: finalPembina,
+        pembinaId: row.pembina_id ? String(row.pembina_id) : undefined,
+        catatan: String(row.catatan || ''),
+        status: (row.status as any) || 'BELUM DIMULAI',
+        tanggalSelesai: row.tanggal_selesai || undefined,
+        created_at: row.created_at || new Date().toISOString()
+      };
+    });
   } catch (err) {
     return null;
   }
@@ -2461,6 +2638,7 @@ export async function insertPembinaanRecordToDB(
         santriNama: record.santriNama,
         santriKelas: record.santriKelas,
         santriUnit: record.santriUnit,
+        lingkungan: APP_ENVIRONMENT,
         pelanggaranTerkaitId: record.pelanggaranTerkaitId,
         pelanggaranTerkaitJenis: record.pelanggaranTerkaitJenis,
         jenisPembinaan: record.jenisPembinaan,
@@ -2481,6 +2659,7 @@ export async function insertPembinaanRecordToDB(
       santri_nama: record.santriNama,
       santri_kelas: record.santriKelas,
       santri_unit: record.santriUnit,
+      lingkungan: APP_ENVIRONMENT,
       pelanggaran_terkait_id: record.pelanggaranTerkaitId || null,
       pelanggaran_terkait_jenis: record.pelanggaranTerkaitJenis || null,
       jenis_pembinaan: record.jenisPembinaan,
@@ -2559,3 +2738,111 @@ export async function updatePembinaanStatusInDB(
     return { success: false, error: err?.message || 'Gagal memperbarui status pembinaan.' };
   }
 }
+
+// ==============================================================================
+// 7. HIDDEN NOTIFICATIONS (public.hidden_notifications)
+// ==============================================================================
+
+let isHiddenNotificationsTableAvailable: boolean | null = null;
+
+export async function fetchHiddenNotificationIdsFromDB(
+  lingkungan: AppEnvironment = APP_ENVIRONMENT
+): Promise<string[] | null> {
+  if (!isSupabaseConfigured() || isHiddenNotificationsTableAvailable === false) {
+    return null;
+  }
+  try {
+    const { data, error } = await supabase
+      .from('hidden_notifications')
+      .select('activity_id')
+      .eq('lingkungan', lingkungan);
+
+    if (error) {
+      if (
+        error.code === 'PGRST205' ||
+        error.code === '42P01' ||
+        error.message?.includes('hidden_notifications') ||
+        error.message?.includes('schema cache')
+      ) {
+        // Table not present yet in remote Supabase schema cache; smoothly fallback to local storage
+        isHiddenNotificationsTableAvailable = false;
+        return null;
+      }
+      return null;
+    }
+
+    isHiddenNotificationsTableAvailable = true;
+    return data ? data.map((row: any) => String(row.activity_id)) : null;
+  } catch (err: any) {
+    if (
+      err?.code === 'PGRST205' ||
+      err?.code === '42P01' ||
+      err?.message?.includes('hidden_notifications')
+    ) {
+      isHiddenNotificationsTableAvailable = false;
+    }
+    return null;
+  }
+}
+
+export async function insertHiddenNotificationToDB(
+  record: {
+    activityId: string;
+    sourceId?: string;
+    activityType: 'pelanggaran' | 'pembinaan';
+    unit: UnitPesantren;
+    lingkungan: AppEnvironment;
+    hiddenByUserId: string;
+    hiddenByNama: string;
+    hiddenByRole: string;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured() || isHiddenNotificationsTableAvailable === false) {
+    return { success: true };
+  }
+  try {
+    const payload = {
+      activity_id: record.activityId,
+      source_id: record.sourceId || null,
+      activity_type: record.activityType,
+      unit: record.unit,
+      lingkungan: record.lingkungan,
+      hidden_by_user_id: record.hiddenByUserId,
+      hidden_by_nama: record.hiddenByNama,
+      hidden_by_role: record.hiddenByRole
+    };
+
+    const { error } = await supabase
+      .from('hidden_notifications')
+      .insert([payload]);
+
+    if (error) {
+      if (
+        error.code === 'PGRST205' ||
+        error.code === '42P01' ||
+        error.message?.includes('hidden_notifications') ||
+        error.message?.includes('schema cache')
+      ) {
+        isHiddenNotificationsTableAvailable = false;
+        // Action is already saved safely in localStorage; no need to throw or spam error
+        return { success: true };
+      }
+      console.warn('[SIMKA.ID] Notice inserting hidden notification to Supabase:', error.message);
+      return { success: false, error: translateSupabaseError(error) };
+    }
+
+    isHiddenNotificationsTableAvailable = true;
+    return { success: true };
+  } catch (err: any) {
+    if (
+      err?.code === 'PGRST205' ||
+      err?.code === '42P01' ||
+      err?.message?.includes('hidden_notifications')
+    ) {
+      isHiddenNotificationsTableAvailable = false;
+      return { success: true };
+    }
+    return { success: false, error: translateSupabaseError(err) };
+  }
+}
+

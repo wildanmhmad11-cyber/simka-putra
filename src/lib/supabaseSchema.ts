@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS public.santri (
   nama TEXT NOT NULL,
   kelas TEXT NOT NULL,
   unit TEXT NOT NULL CHECK (unit IN ('SMP', 'MA', 'SMA')),
+  lingkungan TEXT NOT NULL DEFAULT 'PUTRI' CHECK (lingkungan IN ('PUTRA', 'PUTRI')),
   musyrif_id TEXT REFERENCES public.users(id) ON DELETE SET NULL,
   musyrif_nama TEXT,
   asrama TEXT,
@@ -49,6 +50,7 @@ CREATE TABLE IF NOT EXISTS public.santri (
 );
 
 CREATE INDEX IF NOT EXISTS idx_santri_unit ON public.santri(unit);
+CREATE INDEX IF NOT EXISTS idx_santri_lingkungan ON public.santri(lingkungan);
 CREATE INDEX IF NOT EXISTS idx_santri_musyrif ON public.santri(musyrif_id);
 
 -- 4. TABEL MASTER PELANGGARAN
@@ -80,6 +82,7 @@ CREATE TABLE IF NOT EXISTS public.pelanggaran (
   id TEXT PRIMARY KEY DEFAULT 'log-' || substr(md5(random()::text), 1, 8),
   santri_id TEXT NOT NULL REFERENCES public.santri(id) ON DELETE CASCADE,
   santri_unit TEXT NOT NULL CHECK (santri_unit IN ('SMP', 'MA', 'SMA')),
+  lingkungan TEXT NOT NULL DEFAULT 'PUTRI' CHECK (lingkungan IN ('PUTRA', 'PUTRI')),
   pelanggaran_id TEXT REFERENCES public.master_pelanggaran(id) ON DELETE SET NULL,
   jenis_pelanggaran_id TEXT REFERENCES public.master_pelanggaran(id) ON DELETE SET NULL,
   jenis_pelanggaran_nama TEXT,
@@ -95,6 +98,9 @@ CREATE TABLE IF NOT EXISTS public.pelanggaran (
   santri_kelas TEXT,
   pembinaan_tingkat VARCHAR(50),
   rekomendasi_pembinaan JSONB DEFAULT '[]'::jsonb,
+  diselesaikan_pada TIMESTAMPTZ,
+  diselesaikan_oleh TEXT REFERENCES public.users(id) ON DELETE SET NULL,
+  penyelesai_nama TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -102,6 +108,8 @@ CREATE TABLE IF NOT EXISTS public.pelanggaran (
 CREATE INDEX IF NOT EXISTS idx_pelanggaran_santri ON public.pelanggaran(santri_id);
 CREATE INDEX IF NOT EXISTS idx_pelanggaran_pelanggaran_id ON public.pelanggaran(pelanggaran_id);
 CREATE INDEX IF NOT EXISTS idx_pelanggaran_unit ON public.pelanggaran(santri_unit);
+CREATE INDEX IF NOT EXISTS idx_pelanggaran_lingkungan ON public.pelanggaran(lingkungan);
+CREATE INDEX IF NOT EXISTS idx_pelanggaran_status ON public.pelanggaran(status);
 CREATE INDEX IF NOT EXISTS idx_pelanggaran_tanggal ON public.pelanggaran(tanggal_waktu DESC);
 
 -- 6. TABEL MASTER PEMBINAAN (8 Tingkat Resmi Yayasan)
@@ -124,6 +132,7 @@ CREATE TABLE IF NOT EXISTS public.pembinaan (
   santri_nama TEXT NOT NULL,
   santri_kelas TEXT NOT NULL,
   santri_unit TEXT NOT NULL,
+  lingkungan TEXT NOT NULL DEFAULT 'PUTRI' CHECK (lingkungan IN ('PUTRA', 'PUTRI')),
   pelanggaran_terkait_id TEXT REFERENCES public.pelanggaran(id) ON DELETE SET NULL,
   pelanggaran_terkait_jenis TEXT,
   jenis_pembinaan TEXT NOT NULL,
@@ -137,8 +146,28 @@ CREATE TABLE IF NOT EXISTS public.pembinaan (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS idx_pembinaan_lingkungan ON public.pembinaan(lingkungan);
+
+-- 8. TABEL SEMBUNYIKAN PEMBERITAHUAN (Hapus/Arsipkan Notifikasi dari Panel)
+CREATE TABLE IF NOT EXISTS public.hidden_notifications (
+  id TEXT PRIMARY KEY DEFAULT 'hide-' || substr(md5(random()::text), 1, 8),
+  activity_id TEXT NOT NULL,
+  source_id TEXT,
+  activity_type TEXT NOT NULL CHECK (activity_type IN ('pelanggaran', 'pembinaan')),
+  unit TEXT NOT NULL CHECK (unit IN ('SMP', 'MA', 'SMA', 'ALL')),
+  lingkungan TEXT NOT NULL CHECK (lingkungan IN ('PUTRA', 'PUTRI')),
+  hidden_by_user_id TEXT NOT NULL,
+  hidden_by_nama TEXT NOT NULL,
+  hidden_by_role TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT uq_activity_hidden UNIQUE (activity_id, lingkungan)
+);
+
+CREATE INDEX IF NOT EXISTS idx_hidden_notif_lingkungan ON public.hidden_notifications(lingkungan);
+CREATE INDEX IF NOT EXISTS idx_hidden_notif_unit ON public.hidden_notifications(unit);
+
 -- ==============================================================================
--- 8. ROW LEVEL SECURITY (RLS) - DIIZINKAN UNTUK ANON PUBLIC KEY
+-- 9. ROW LEVEL SECURITY (RLS) - DIIZINKAN UNTUK ANON PUBLIC KEY
 -- ==============================================================================
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
@@ -147,6 +176,7 @@ ALTER TABLE public.master_pelanggaran ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pelanggaran ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.master_pembinaan ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pembinaan ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.hidden_notifications ENABLE ROW LEVEL SECURITY;
 
 -- Buat Policy Akses Penuh untuk Anon Key
 DROP POLICY IF EXISTS "Public Anon All users" ON public.users;
@@ -166,6 +196,9 @@ CREATE POLICY "Public Anon All master_pembinaan" ON public.master_pembinaan FOR 
 
 DROP POLICY IF EXISTS "Public Anon All pembinaan" ON public.pembinaan;
 CREATE POLICY "Public Anon All pembinaan" ON public.pembinaan FOR ALL TO anon USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Anon All hidden_notifications" ON public.hidden_notifications;
+CREATE POLICY "Public Anon All hidden_notifications" ON public.hidden_notifications FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ==============================================================================
 -- 9. SEED DATA DEFAULT (AKUN DEFAULT & MASTER PEMBINAAN)

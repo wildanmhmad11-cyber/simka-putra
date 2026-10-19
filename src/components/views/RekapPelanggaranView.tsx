@@ -18,27 +18,35 @@ import {
   RotateCcw,
   Trash2,
   AlertTriangle,
+  CheckCircle2,
   X
 } from 'lucide-react';
 
 export const RekapPelanggaranView: React.FC = () => {
-  const { user, riwayatList, toggleStatusPelanggaran, deleteRiwayatPelanggaran, santriList, pelanggaranList, setSelectedSantriForDetail, showToast } = useApp();
+  const { user, riwayatList, toggleStatusPelanggaran, tandaiPelanggaranSelesai, deleteRiwayatPelanggaran, santriList, pelanggaranList, setSelectedSantriForDetail, showToast } = useApp();
   
   const isSuperadmin = user?.role === 'KASIE_KEPESANTRENAN';
   const isKoordinator = user?.role === 'KOORDINATOR';
+  const isMusyrif = user?.role === 'MUSYRIF';
   const canExport = isSuperadmin || isKoordinator;
   const canDelete = isSuperadmin;
+  const canMarkSelesai = isSuperadmin || isKoordinator;
+  const canShowAksiColumn = canMarkSelesai || canDelete;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUnit, setSelectedUnit] = useState<string>(
     isSuperadmin ? 'ALL' : user?.unit || 'ALL'
   );
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('ALL');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
   const [deletingLog, setDeletingLog] = useState<RiwayatPelanggaran | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [selesaiTargetLog, setSelesaiTargetLog] = useState<RiwayatPelanggaran | null>(null);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -68,7 +76,12 @@ export const RekapPelanggaranView: React.FC = () => {
         calculatedKategori === selectedCategory ||
         (log as any).kategori === selectedCategory;
 
-      // 4. Date Range match
+      // 4. Status match (Semua / Belum Selesai / Selesai)
+      const matchStatus =
+        selectedStatusFilter === 'ALL' ||
+        log.status === selectedStatusFilter;
+
+      // 5. Date Range match
       let matchDate = true;
       if (startDate || endDate) {
         const logDateStr = log.tanggal ? log.tanggal.slice(0, 10) : '';
@@ -80,9 +93,9 @@ export const RekapPelanggaranView: React.FC = () => {
         }
       }
 
-      return matchSearch && matchUnit && matchCategory && matchDate;
+      return matchSearch && matchUnit && matchCategory && matchStatus && matchDate;
     });
-  }, [riwayatList, searchQuery, selectedUnit, selectedCategory, startDate, endDate]);
+  }, [riwayatList, searchQuery, selectedUnit, selectedCategory, selectedStatusFilter, startDate, endDate]);
 
   const totalPages = Math.ceil(filteredLogs.length / itemsPerPage) || 1;
   const paginatedLogs = useMemo(() => {
@@ -104,6 +117,7 @@ export const RekapPelanggaranView: React.FC = () => {
     try {
       exportRiwayatPelanggaranPDF(filteredLogs, {
         unitFilter: selectedUnit,
+        statusFilter: selectedStatusFilter,
         searchQuery: searchQuery,
         userRole: user?.role,
         userName: user?.nama
@@ -117,6 +131,21 @@ export const RekapPelanggaranView: React.FC = () => {
     } catch (err: any) {
       console.error('[EXPORT PDF ERROR]', err);
       showToast('Gagal Membuat PDF', err?.message || 'Terjadi kesalahan sistem.', 'error');
+    }
+  };
+
+  const handleConfirmSelesai = async () => {
+    if (!selesaiTargetLog || isCompleting) return;
+    setIsCompleting(true);
+    try {
+      const res = await tandaiPelanggaranSelesai(selesaiTargetLog.id);
+      if (res.success) {
+        setSelesaiTargetLog(null);
+      }
+    } catch (err: any) {
+      showToast('Gagal Memperbarui', err?.message || 'Terjadi kesalahan sistem.', 'error');
+    } finally {
+      setIsCompleting(false);
     }
   };
 
@@ -139,6 +168,7 @@ export const RekapPelanggaranView: React.FC = () => {
     setSearchQuery('');
     if (isSuperadmin) setSelectedUnit('ALL');
     setSelectedCategory('All');
+    setSelectedStatusFilter('ALL');
     setStartDate('');
     setEndDate('');
     setCurrentPage(1);
@@ -246,6 +276,24 @@ export const RekapPelanggaranView: React.FC = () => {
               </select>
             </div>
 
+            {/* Status Filter */}
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-slate-500 dark:text-slate-400 text-[11px]">Status:</span>
+              <select
+                id="select-filter-status-rekap"
+                value={selectedStatusFilter}
+                onChange={(e) => {
+                  setSelectedStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="bg-slate-100 dark:bg-[#0A1322] border border-slate-200 dark:border-[#1E3048] rounded-lg px-2 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-emerald-500 cursor-pointer"
+              >
+                <option value="ALL">Semua</option>
+                <option value="Belum Selesai">Belum Selesai</option>
+                <option value="Selesai">Selesai</option>
+              </select>
+            </div>
+
             {/* Date Range Inputs */}
             <div className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -274,7 +322,7 @@ export const RekapPelanggaranView: React.FC = () => {
           </div>
 
           {/* Reset Filters */}
-          {(searchQuery || (isSuperadmin && selectedUnit !== 'ALL') || selectedCategory !== 'All' || startDate || endDate) && (
+          {(searchQuery || (isSuperadmin && selectedUnit !== 'ALL') || selectedCategory !== 'All' || selectedStatusFilter !== 'ALL' || startDate || endDate) && (
             <button
               onClick={handleResetFilters}
               className="inline-flex items-center gap-1 text-[11px] text-rose-500 hover:text-rose-600 font-semibold cursor-pointer hover:underline"
@@ -300,13 +348,13 @@ export const RekapPelanggaranView: React.FC = () => {
                 <th className="py-2.5 px-3 text-center">KATEGORI</th>
                 <th className="py-2.5 px-3">PELAPOR</th>
                 <th className="py-2.5 px-3">SANKSI / KONSEKUENSI</th>
-                {canDelete && <th className="py-2.5 px-3 text-center w-12">AKSI</th>}
+                {canShowAksiColumn && <th className="py-2.5 px-3 text-center min-w-[120px]">AKSI</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-[#182740] text-slate-800 dark:text-slate-200">
               {paginatedLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={canDelete ? 9 : 8} className="py-10 text-center text-slate-400 italic">
+                  <td colSpan={canShowAksiColumn ? 9 : 8} className="py-10 text-center text-slate-400 italic">
                     <p className="font-bold text-slate-600 dark:text-slate-300">Tidak ada catatan pelanggaran ditemukan</p>
                     <p className="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci pencarian atau filter yang aktif.</p>
                   </td>
@@ -393,16 +441,56 @@ export const RekapPelanggaranView: React.FC = () => {
                         {displayHukuman}
                       </td>
 
-                      {canDelete && (
+                      {canShowAksiColumn && (
                         <td className="py-2 px-3 text-center whitespace-nowrap">
-                          <button
-                            id={`btn-delete-riwayat-${log.id}`}
-                            onClick={() => setDeletingLog(log)}
-                            title="Hapus Catatan Pelanggaran ini"
-                            className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            {/* Tombol / Indikator Selesai Pembinaan */}
+                            {log.status === 'Selesai' ? (
+                              <span
+                                title="Pembinaan Sudah Selesai"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100/90 dark:bg-emerald-950/60 border border-emerald-300/80 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] shadow-2xs select-none"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                <span>Selesai</span>
+                              </span>
+                            ) : canMarkSelesai && (isSuperadmin || (isKoordinator && log.santriUnit === user?.unit)) ? (
+                              <button
+                                id={`btn-tandai-selesai-${log.id}`}
+                                onClick={() => setSelesaiTargetLog(log)}
+                                title="Tandai Pembinaan Selesai"
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-2xs transition-all cursor-pointer active:scale-95"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Selesai</span>
+                              </button>
+                            ) : isKoordinator ? (
+                              <span
+                                title={`Koordinator Unit ${user?.unit} hanya dapat menyelesaikan santri unitnya`}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#132138] border border-slate-200 dark:border-[#1E2E4A] text-slate-400 dark:text-slate-500 text-[10px] cursor-not-allowed"
+                              >
+                                Unit Lain
+                              </span>
+                            ) : isMusyrif ? (
+                              <span
+                                title="Musyrif tidak berwenang menandai pembinaan selesai"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-600 dark:text-amber-400 text-[10px]"
+                              >
+                                Belum Selesai
+                              </span>
+                            ) : null}
+
+                            {/* Tombol Hapus (Khusus Kasie Kepesantrenan / Superadmin) */}
+                            {canDelete && (
+                              <button
+                                id={`btn-delete-riwayat-${log.id}`}
+                                onClick={() => setDeletingLog(log)}
+                                title="Hapus Catatan Pelanggaran ini"
+                                className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       )}
                     </tr>
@@ -444,6 +532,105 @@ export const RekapPelanggaranView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal Konfirmasi Tandai Selesai Pembinaan */}
+      {selesaiTargetLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-[#111C31] border border-slate-200 dark:border-[#1E2E4A] rounded-2xl w-full max-w-md shadow-2xl p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Tandai Pembinaan Selesai
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Konfirmasi penyelesaian tindakan kedisiplinan
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => !isCompleting && setSelesaiTargetLog(null)}
+                disabled={isCompleting}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 text-xs space-y-2.5 text-slate-700 dark:text-slate-300">
+              <p className="font-semibold text-slate-800 dark:text-slate-200 leading-snug">
+                Apakah Anda yakin ingin menandai pelanggaran ini sebagai selesai ditindaklanjuti?
+              </p>
+              <div className="bg-white dark:bg-[#0A1322] p-3 rounded-lg border border-emerald-200/60 dark:border-emerald-900/40 font-medium space-y-1.5 shadow-2xs">
+                <div className="flex justify-between items-center pb-1 border-b border-slate-100 dark:border-[#182740]">
+                  <span className="text-slate-400 text-[11px]">Nama Santri:</span>
+                  <strong className="text-slate-900 dark:text-white text-xs">{selesaiTargetLog.santriNama}</strong>
+                </div>
+                <div className="flex justify-between items-center pb-1 border-b border-slate-100 dark:border-[#182740]">
+                  <span className="text-slate-400 text-[11px]">Kelas & Unit:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                    {selesaiTargetLog.santriKelas} ({selesaiTargetLog.santriUnit})
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pb-1 border-b border-slate-100 dark:border-[#182740]">
+                  <span className="text-slate-400 text-[11px]">Jenis Pelanggaran:</span>
+                  <span className="font-bold text-emerald-700 dark:text-emerald-400 text-xs text-right max-w-[200px] truncate" title={selesaiTargetLog.jenisPelanggaranNama}>
+                    {selesaiTargetLog.jenisPelanggaranNama}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pb-1 border-b border-slate-100 dark:border-[#182740]">
+                  <span className="text-slate-400 text-[11px]">Akumulasi Poin:</span>
+                  <span className="font-black text-rose-600 dark:text-rose-400 text-xs">
+                    +{selesaiTargetLog.poin} Poin
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 text-[11px]">Sanksi / Konsekuensi:</span>
+                  <span className="text-slate-600 dark:text-slate-300 text-xs text-right max-w-[200px] truncate" title={selesaiTargetLog.hukuman}>
+                    {selesaiTargetLog.hukuman || '-'}
+                  </span>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                * Status pelanggaran akan disimpan sebagai &quot;Selesai&quot; di Supabase dan statistik &quot;Belum Selesai&quot; pada dashboard akan otomatis berkurang.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setSelesaiTargetLog(null)}
+                disabled={isCompleting}
+                className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-[#1E2E4A] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#162540] text-xs font-semibold cursor-pointer disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                id="btn-confirm-tandai-selesai"
+                type="button"
+                onClick={handleConfirmSelesai}
+                disabled={isCompleting}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-emerald-600/30 transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                {isCompleting ? (
+                  <>
+                    <span className="animate-spin">⏳</span>
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Ya, Tandai Selesai</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deletingLog && (

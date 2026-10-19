@@ -10,7 +10,10 @@ import {
   PembinaanRecord,
   UnitPesantren,
   UnitFilter,
-  UserRole
+  UserRole,
+  ActivityItem,
+  AppEnvironment,
+  APP_ENVIRONMENT
 } from '../types';
 import { 
   initialUsers, 
@@ -39,6 +42,8 @@ import {
   fetchMasterPembinaanFromDB, 
   findPembinaanBySinglePoin,
   fetchPembinaanRecordsFromDB,
+  fetchHiddenNotificationIdsFromDB,
+  insertHiddenNotificationToDB,
   fetchUsersFromDB,
   insertUserToDB,
   updateUserInDB,
@@ -71,15 +76,7 @@ export interface ToastInfo {
   message: string;
 }
 
-export interface ActivityItem {
-  id: string;
-  title: string;
-  desc: string;
-  timestamp: string;
-  timeFormatted: string;
-  type: 'pelanggaran' | 'pembinaan' | 'santri' | 'user';
-  unit: UnitPesantren;
-}
+export type { ActivityItem } from '../types';
 
 interface AppContextType {
   currentRoute: PageRoute;
@@ -257,6 +254,7 @@ interface AppContextType {
     catatan?: string;
   }) => Promise<boolean>;
   toggleStatusPelanggaran: (id: string) => Promise<void>;
+  tandaiPelanggaranSelesai: (id: string) => Promise<{ success: boolean; message?: string }>;
   updateUserPassword: (oldPass: string, newPass: string, confirmPass: string) => Promise<{ success: boolean; message: string }>;
   // Dynamic Scoped Dashboard Statistics
   stats: {
@@ -277,6 +275,9 @@ interface AppContextType {
   getTopPelanggaran: () => Array<{ id: string; nama: string; kategori: string; count: number; totalPoin: number }>;
   getRecentPembinaan: () => PembinaanRecord[];
   getRecentActivities: () => ActivityItem[];
+  hideActivity: (activityId: string, activity: ActivityItem) => Promise<{ success: boolean; error?: string }>;
+  canUserHideActivity: (activity: ActivityItem) => boolean;
+  appEnvironment: AppEnvironment;
   // Database Modal & Offline Sync
   isDatabaseModalOpen: boolean;
   setIsDatabaseModalOpen: (open: boolean) => void;
@@ -411,8 +412,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Santri & Riwayat Dataset (Supabase Single Source of Truth)
   const [allSantriList, setAllSantriList] = useState<Santri[]>(() => {
     try {
-      const saved = localStorage.getItem('simka_santri');
-      return saved ? sortSantriList(JSON.parse(saved)) : sortSantriList(initialSantriList);
+      const saved = localStorage.getItem(`simka_santri_${APP_ENVIRONMENT}`) || localStorage.getItem('simka_santri');
+      if (saved) {
+        const parsed: Santri[] = JSON.parse(saved);
+        const scoped = parsed.filter((s) => s.lingkungan ? s.lingkungan === APP_ENVIRONMENT : true);
+        if (scoped.length > 0) {
+          return sortSantriList(scoped.map(s => ({ ...s, lingkungan: APP_ENVIRONMENT })));
+        }
+      }
+      return sortSantriList(initialSantriList);
     } catch (e) {
       return sortSantriList(initialSantriList);
     }
@@ -420,8 +428,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [allRiwayatList, setAllRiwayatList] = useState<RiwayatPelanggaran[]>(() => {
     try {
-      const saved = localStorage.getItem('simka_riwayat');
-      return saved ? JSON.parse(saved) : initialRiwayatPelanggaran;
+      const saved = localStorage.getItem(`simka_riwayat_${APP_ENVIRONMENT}`) || localStorage.getItem('simka_riwayat');
+      if (saved) {
+        const parsed: RiwayatPelanggaran[] = JSON.parse(saved);
+        const hasOldMale = parsed.some(r => r.santriNama === 'ABDUR ROFI' || r.santriNama === 'HAFIZH KHAIRUN NIAM');
+        const scoped = parsed.filter((r) => r.lingkungan ? r.lingkungan === APP_ENVIRONMENT : true);
+        if (!hasOldMale && scoped.length > 0) {
+          return scoped.map(r => ({ ...r, lingkungan: APP_ENVIRONMENT }));
+        }
+      }
+      return initialRiwayatPelanggaran;
     } catch (e) {
       return initialRiwayatPelanggaran;
     }
@@ -429,10 +445,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [allPembinaanList, setAllPembinaanList] = useState<PembinaanRecord[]>(() => {
     try {
-      const saved = localStorage.getItem('simka_pembinaan_records');
-      return saved ? JSON.parse(saved) : initialPembinaanRecords;
+      const saved = localStorage.getItem(`simka_pembinaan_${APP_ENVIRONMENT}`) || localStorage.getItem('simka_pembinaan_records');
+      if (saved) {
+        const parsed: PembinaanRecord[] = JSON.parse(saved);
+        const hasOldMale = parsed.some(p => p.santriNama === 'MUHAMMAD ILHAM FAHREZI' || p.santriNama === 'RIZKY RAMADHAN' || p.santriNama === 'ACHMAD FADILLAH');
+        const scoped = parsed.filter((p) => p.lingkungan ? p.lingkungan === APP_ENVIRONMENT : true);
+        if (!hasOldMale && scoped.length > 0) {
+          return scoped.map(p => ({ ...p, lingkungan: APP_ENVIRONMENT }));
+        }
+      }
+      return initialPembinaanRecords;
     } catch (e) {
       return initialPembinaanRecords;
+    }
+  });
+
+  // Hidden Activity / Notifications (Excluded from panel without deleting source data)
+  const [hiddenActivityIds, setHiddenActivityIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(`SIMKA_HIDDEN_ACTIVITIES_${APP_ENVIRONMENT}`);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch (e) {
+      return new Set();
     }
   });
 
@@ -449,14 +483,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [pelanggaranList]);
 
   useEffect(() => {
+    localStorage.setItem(`simka_santri_${APP_ENVIRONMENT}`, JSON.stringify(allSantriList));
     localStorage.setItem('simka_santri', JSON.stringify(allSantriList));
   }, [allSantriList]);
 
   useEffect(() => {
+    localStorage.setItem(`simka_riwayat_${APP_ENVIRONMENT}`, JSON.stringify(allRiwayatList));
     localStorage.setItem('simka_riwayat', JSON.stringify(allRiwayatList));
   }, [allRiwayatList]);
 
   useEffect(() => {
+    localStorage.setItem(`simka_pembinaan_${APP_ENVIRONMENT}`, JSON.stringify(allPembinaanList));
     localStorage.setItem('simka_pembinaan_records', JSON.stringify(allPembinaanList));
   }, [allPembinaanList]);
 
@@ -599,6 +636,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (dbPembinaan !== null) {
         setAllPembinaanList(dbPembinaan);
         localStorage.setItem('simka_pembinaan_records', JSON.stringify(dbPembinaan));
+      }
+
+      // Sync hidden notifications from Supabase
+      const dbHidden = await fetchHiddenNotificationIdsFromDB(APP_ENVIRONMENT);
+      if (dbHidden && dbHidden.length > 0) {
+        setHiddenActivityIds((prev) => {
+          const merged = new Set(prev);
+          dbHidden.forEach((id) => merged.add(id));
+          localStorage.setItem(`SIMKA_HIDDEN_ACTIVITIES_${APP_ENVIRONMENT}`, JSON.stringify(Array.from(merged)));
+          return merged;
+        });
       }
     } catch (err) {
       console.warn('Supabase data synchronization note:', err);
@@ -1829,15 +1877,121 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
+  const tandaiPelanggaranSelesai = async (id: string): Promise<{ success: boolean; message?: string }> => {
+    if (!user) {
+      showToast('Akses Ditolak', 'Silakan login terlebih dahulu untuk menandai pembinaan.', 'error');
+      return { success: false, message: 'Silakan login terlebih dahulu.' };
+    }
+
+    if (user.role === 'MUSYRIF') {
+      showToast('Akses Ditolak', 'Musyrif tidak berwenang menandai pelanggaran sebagai selesai.', 'error');
+      return { success: false, message: 'Musyrif tidak berwenang menandai pelanggaran sebagai selesai.' };
+    }
+
+    const existing = allRiwayatList.find((r) => r.id === id);
+    if (!existing) {
+      showToast('Data Tidak Ditemukan', 'Catatan pelanggaran tidak ditemukan.', 'error');
+      return { success: false, message: 'Catatan pelanggaran tidak ditemukan.' };
+    }
+
+    if (existing.status === 'Selesai') {
+      showToast('Info', 'Pelanggaran ini sudah berstatus selesai.', 'info');
+      return { success: true, message: 'Pelanggaran ini sudah berstatus selesai.' };
+    }
+
+    if (user.role === 'KOORDINATOR' && existing.santriUnit !== user.unit) {
+      const msg = `Akses Ditolak: Koordinator Unit ${user.unit} hanya dapat menyelesaikan pelanggaran santri Unit ${user.unit}.`;
+      showToast('Akses Ditolak', msg, 'error');
+      return { success: false, message: msg };
+    }
+
+    // Persist changes to Supabase
+    const dbRes = await updatePelanggaranStatusInDB(
+      id,
+      'Selesai',
+      { id: user.id, nama: user.nama, role: user.role, unit: user.unit },
+      existing.santriUnit
+    );
+
+    if (!dbRes.success) {
+      showToast('Gagal Memperbarui', dbRes.error || 'Gagal menyimpan status ke Supabase.', 'error');
+      return { success: false, message: dbRes.error || 'Gagal menyimpan status ke Supabase.' };
+    }
+
+    const nowIso = new Date().toISOString();
+    setAllRiwayatList((prev) => {
+      const updated = prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              status: 'Selesai' as const,
+              diselesaikanPada: nowIso,
+              diselesaikanOleh: user.id,
+              penyelesaiNama: user.nama
+            }
+          : item
+      );
+      try {
+        localStorage.setItem('simka_riwayat', JSON.stringify(updated));
+      } catch (e) {
+        // ignore storage error
+      }
+      return updated;
+    });
+
+    showToast(
+      'Pembinaan Selesai!',
+      `Pelanggaran santri ${existing.santriNama} (${existing.jenisPelanggaranNama}) berhasil ditandai selesai ditindaklanjuti.`,
+      'success'
+    );
+
+    return { success: true, message: 'Status pembinaan berhasil ditandai selesai.' };
+  };
+
   const toggleStatusPelanggaran = async (id: string) => {
+    if (!user) return;
+    if (user.role === 'MUSYRIF') {
+      showToast('Akses Ditolak', 'Musyrif tidak berwenang mengubah status penyelesaian.', 'error');
+      return;
+    }
     const existing = allRiwayatList.find((r) => r.id === id);
     if (!existing) return;
+    if (user.role === 'KOORDINATOR' && existing.santriUnit !== user.unit) {
+      showToast('Akses Ditolak', `Koordinator Unit ${user.unit} hanya berwenang mengubah status pelanggaran santri Unit ${user.unit}.`, 'error');
+      return;
+    }
+
     const newStatus = existing.status === 'Selesai' ? 'Belum Selesai' : 'Selesai';
-    
-    await updatePelanggaranStatusInDB(id, newStatus);
-    setAllRiwayatList((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
+    const dbRes = await updatePelanggaranStatusInDB(
+      id, 
+      newStatus,
+      { id: user.id, nama: user.nama, role: user.role, unit: user.unit },
+      existing.santriUnit
     );
+    if (!dbRes.success) {
+      showToast('Gagal Mengubah Status', dbRes.error || 'Gagal memperbarui database.', 'error');
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    setAllRiwayatList((prev) => {
+      const updated = prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              status: newStatus as 'Selesai' | 'Belum Selesai',
+              diselesaikanPada: newStatus === 'Selesai' ? nowIso : undefined,
+              diselesaikanOleh: newStatus === 'Selesai' ? user.id : undefined,
+              penyelesaiNama: newStatus === 'Selesai' ? user.nama : undefined
+            }
+          : item
+      );
+      try {
+        localStorage.setItem('simka_riwayat', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
     showToast('Status Diperbarui', `Status hukuman diubah menjadi "${newStatus}".`, 'info');
   };
 
@@ -2044,37 +2198,347 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return [...pembinaanList].slice(0, 5);
   };
 
-  const getRecentActivities = (): ActivityItem[] => {
+  /**
+   * Helper to format timestamp into Indonesian local time with WIB:
+   * e.g., "18 Okt 2026, 12.55 WIB"
+   */
+  const formatActivityDateTime = (rawTimestamp?: string, fallbackDateStr?: string): string => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    if (rawTimestamp) {
+      const d = new Date(rawTimestamp);
+      if (!isNaN(d.getTime())) {
+        const day = d.getDate();
+        const monthName = months[d.getMonth()];
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${day} ${monthName} ${year}, ${hours}.${minutes} WIB`;
+      }
+    }
+    if (fallbackDateStr && fallbackDateStr.includes('WIB')) {
+      return fallbackDateStr;
+    }
+    if (fallbackDateStr) {
+      return `${fallbackDateStr} WIB`;
+    }
+    const now = new Date();
+    return `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}, ${String(now.getHours()).padStart(2, '0')}.${String(now.getMinutes()).padStart(2, '0')} WIB`;
+  };
+
+  /**
+   * AKTIVITAS & PEMBERITAHUAN (REAL-TIME HYDRATED & SCOPED)
+   * Mengambil data asli dari public.pelanggaran, public.santri, public.master_pelanggaran,
+   * dan public.users, memfilter secara ketat berdasarkan hak akses role & unit sesi login aktif.
+   */
+  const getRecentActivities = useCallback((): ActivityItem[] => {
+    if (!user) return [];
+
+    const role = user.role;
+    const userUnit = user.unit;
+
+    // Strict validation: if Koordinator or Musyrif has missing or invalid unit, do NOT default to ALL
+    // Aturan 4: "Jika unit pengguna belum tersedia atau tidak valid, jangan secara otomatis menampilkan seluruh unit."
+    if (role !== 'KASIE_KEPESANTRENAN') {
+      if (!userUnit || !['SMP', 'MA', 'SMA'].includes(userUnit)) {
+        return [];
+      }
+    }
+
+    // Identify santri IDs specifically assigned to Musyrif (if role === 'MUSYRIF')
+    let musyrifSantriIds: Set<string> | null = null;
+    if (role === 'MUSYRIF') {
+      const cleanUserName = (user.nama || '').toLowerCase().trim();
+      const ownSantri = allSantriList.filter((s) => {
+        if (s.unit !== userUnit) return false;
+        if (s.musyrifId && s.musyrifId === user.id) return true;
+        if (s.musyrifNama && s.musyrifNama.toLowerCase().trim() === cleanUserName) return true;
+        if (s.musyrif && s.musyrif.toLowerCase().trim() === cleanUserName) return true;
+        return false;
+      });
+      if (ownSantri.length > 0) {
+        musyrifSantriIds = new Set(ownSantri.map((s) => s.id));
+      }
+    }
+
+    // Build santri map for strict relational and lingkungan verification
+    const santriMap = new Map<string, Santri>();
+    allSantriList.forEach((s) => {
+      if (s.id) santriMap.set(String(s.id).trim(), s);
+      if (s.nis) santriMap.set(String(s.nis).trim(), s);
+    });
+
     const activities: ActivityItem[] = [];
 
-    riwayatList.slice(0, 5).forEach((r) => {
+    // 1. Process Pelanggaran activities from allRiwayatList
+    allRiwayatList.forEach((r) => {
+      const actId = `act-plg-${r.id}`;
+      // Rule: Exclude hidden/deleted notifications from panel
+      if (hiddenActivityIds.has(actId)) {
+        return;
+      }
+
+      // Rule: PEMISAHAN DATA PUTRA/PUTRI
+      // "Aplikasi PUTRI hanya menampilkan notifikasi untuk santri dan aktivitas PUTRI.
+      // Jangan menampilkan aktivitas yang lingkungannya tidak diketahui atau tidak dapat diverifikasi."
+      const santriObj = r.santriId ? santriMap.get(String(r.santriId).trim()) : undefined;
+      const activityLingkungan = r.lingkungan || santriObj?.lingkungan;
+      if (!activityLingkungan || activityLingkungan !== APP_ENVIRONMENT) {
+        return;
+      }
+
+      // Role & Unit access filtering
+      if (role === 'KASIE_KEPESANTRENAN') {
+        if (selectedKasieUnitFilter !== 'ALL' && r.santriUnit !== selectedKasieUnitFilter) {
+          return;
+        }
+      } else if (role === 'KOORDINATOR') {
+        if (r.santriUnit !== userUnit) {
+          return;
+        }
+      } else if (role === 'MUSYRIF') {
+        // Musyrif must strictly match their unit
+        if (r.santriUnit !== userUnit) {
+          return;
+        }
+        // If musyrif has specific binaan santri, scope to their binaan or records they logged
+        if (musyrifSantriIds && musyrifSantriIds.size > 0) {
+          const isOwnSantri = musyrifSantriIds.has(r.santriId);
+          const isOwnLogged = (r.pencatatId && r.pencatatId === user.id) ||
+                              (r.pencatat && r.pencatat.toLowerCase().trim() === (user.nama || '').toLowerCase().trim());
+          if (!isOwnSantri && !isOwnLogged) {
+            return;
+          }
+        }
+      } else {
+        return;
+      }
+
+      // Format strictly matching specification:
+      // Baris judul: Pelanggaran: [Nama Santri]
+      const santriNama = (r.santriNama && r.santriNama.trim() !== '' && !r.santriNama.startsWith('[Santri ID:'))
+        ? r.santriNama
+        : (r.santriId ? `Santri (NIS: ${r.santriId})` : '[Santri Tidak Terdaftar]');
+
+      // Baris detail: [Nama Jenis Pelanggaran] • [Jumlah Poin] poin
+      const jenisNama = (r.jenisPelanggaranNama && r.jenisPelanggaranNama.trim() !== '' && !r.jenisPelanggaranNama.startsWith('[Pelanggaran ID:'))
+        ? r.jenisPelanggaranNama
+        : (r.jenisPelanggaranId ? `Pelanggaran (ID: ${r.jenisPelanggaranId})` : '[Pelanggaran Tidak Terdaftar]');
+
+      const poin = Number(r.poin) || 0;
+
+      // Informasi pencatat: Dicatat oleh: [Nama Pengguna/Petugas]
+      const pencatat = (r.pencatat && r.pencatat.trim() !== '' && r.pencatat !== 'Petugas' && r.pencatat !== '-')
+        ? r.pencatat
+        : (r.pencatatId ? `Ust./Petugas (${r.pencatatId})` : '[Pencatat Tidak Terdata]');
+
+      // Informasi tambahan: Kelas [Kelas] • Unit [SMP/MA/SMA]
+      const kelas = (r.santriKelas && r.santriKelas !== '-' && !r.santriKelas.startsWith('[Kelas'))
+        ? r.santriKelas
+        : 'Kelas Tidak Terdata';
+      const unit = r.santriUnit || 'SMP';
+
+      // Waktu pencatatan sebenarnya
+      const timestamp = r.timestamp || new Date().toISOString();
+      const timeFormatted = formatActivityDateTime(r.timestamp, r.tanggal);
+
+      const title = `Pelanggaran: ${santriNama}`;
+      const detailLine = `${jenisNama} • ${poin} poin`;
+      const infoPencatat = `Dicatat oleh: ${pencatat}`;
+      const infoTambahan = `Kelas ${kelas} • Unit ${unit}`;
+
       activities.push({
-        id: `act-plg-${r.id}`,
-        title: `Pelanggaran: ${r.santriNama}`,
-        desc: `${r.jenisPelanggaranNama} (${r.poin} poin) - Dicatat oleh ${r.pencatat}`,
-        timestamp: r.timestamp || new Date().toISOString(),
-        timeFormatted: r.tanggal,
+        id: actId,
+        sourceId: r.id,
         type: 'pelanggaran',
-        unit: r.santriUnit
+        title,
+        santriId: r.santriId,
+        santriNama,
+        santriKelas: kelas,
+        unit,
+        lingkungan: activityLingkungan,
+        jenisPelanggaranNama: jenisNama,
+        poin,
+        pencatatNama: pencatat,
+        pencatatId: r.pencatatId,
+        detailLine,
+        infoPencatat,
+        infoTambahan,
+        desc: `${detailLine} — ${infoPencatat}`,
+        timestamp,
+        timeFormatted
       });
     });
 
-    pembinaanList.slice(0, 5).forEach((p) => {
+    // 2. Process Pembinaan activities from allPembinaanList
+    allPembinaanList.forEach((p) => {
+      const actId = `act-pbn-${p.id}`;
+      // Rule: Exclude hidden/deleted notifications from panel
+      if (hiddenActivityIds.has(actId)) {
+        return;
+      }
+
+      // Rule: PEMISAHAN DATA PUTRA/PUTRI
+      const santriObj = p.santriId ? santriMap.get(String(p.santriId).trim()) : undefined;
+      const activityLingkungan = p.lingkungan || santriObj?.lingkungan;
+      if (!activityLingkungan || activityLingkungan !== APP_ENVIRONMENT) {
+        return;
+      }
+
+      // Role & Unit access filtering
+      if (role === 'KASIE_KEPESANTRENAN') {
+        if (selectedKasieUnitFilter !== 'ALL' && p.santriUnit !== selectedKasieUnitFilter) {
+          return;
+        }
+      } else if (role === 'KOORDINATOR') {
+        if (p.santriUnit !== userUnit) {
+          return;
+        }
+      } else if (role === 'MUSYRIF') {
+        if (p.santriUnit !== userUnit) {
+          return;
+        }
+        if (musyrifSantriIds && musyrifSantriIds.size > 0) {
+          const isOwnSantri = musyrifSantriIds.has(p.santriId);
+          const isOwnPembina = (p.pembinaId && p.pembinaId === user.id) ||
+                               (p.pembina && p.pembina.toLowerCase().trim() === (user.nama || '').toLowerCase().trim());
+          if (!isOwnSantri && !isOwnPembina) {
+            return;
+          }
+        }
+      } else {
+        return;
+      }
+
+      const santriNama = (p.santriNama && p.santriNama.trim() !== '' && p.santriNama !== '-')
+        ? p.santriNama
+        : '[Santri Tidak Terdaftar]';
+
+      const jenis = p.jenisPembinaan || 'Tindak Lanjut Pembinaan';
+
+      const pembina = (p.pembina && p.pembina.trim() !== '' && p.pembina !== 'Pembina' && p.pembina !== '-')
+        ? p.pembina
+        : (p.pembinaId ? `Ust./Pembina (${p.pembinaId})` : '[Pembina Belum Ditentukan]');
+
+      const kelas = (p.santriKelas && p.santriKelas !== '-' && !p.santriKelas.startsWith('[Kelas'))
+        ? p.santriKelas
+        : 'Kelas Tidak Terdata';
+      const unit = p.santriUnit || 'SMP';
+
+      const timestamp = p.created_at || new Date().toISOString();
+      const timeFormatted = formatActivityDateTime(p.created_at, p.tanggal);
+
+      // Format Pembinaan matching specification:
+      // Judul: Pembinaan: [Nama Santri]
+      const title = `Pembinaan: ${santriNama}`;
+
+      // Detail: [Jenis atau kegiatan pembinaan]
+      const detailLine = jenis;
+
+      // Informasi pembina / status: Pembina: [Nama Pembina]
+      const infoPencatat = `Pembina: ${pembina}${p.status ? ` (${p.status})` : ''}`;
+
+      // Informasi tambahan: Kelas [Kelas] • Unit [SMP/MA/SMA]
+      const infoTambahan = `Kelas ${kelas} • Unit ${unit}`;
+
       activities.push({
-        id: `act-pbn-${p.id}`,
-        title: `Pembinaan: ${p.santriNama}`,
-        desc: `${p.jenisPembinaan} (${p.status}) - Pembina: ${p.pembina}`,
-        timestamp: p.created_at || new Date().toISOString(),
-        timeFormatted: p.tanggal,
+        id: actId,
+        sourceId: p.id,
         type: 'pembinaan',
-        unit: p.santriUnit
+        title,
+        santriId: p.santriId,
+        santriNama,
+        santriKelas: kelas,
+        unit,
+        lingkungan: activityLingkungan,
+        jenisPembinaan: jenis,
+        pembinaNama: pembina,
+        pembinaId: p.pembinaId,
+        statusPembinaan: p.status,
+        detailLine,
+        infoPencatat,
+        infoTambahan,
+        desc: `${detailLine} — ${infoPencatat}`,
+        timestamp,
+        timeFormatted
       });
     });
 
+    // 3. Sort strictly by timestamp descending and return top 10
     return activities
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 6);
-  };
+      .slice(0, 10);
+  }, [user, selectedKasieUnitFilter, allRiwayatList, allPembinaanList, allSantriList, hiddenActivityIds]);
+
+  /**
+   * Cek otorisasi pengguna untuk menyembunyikan pemberitahuan:
+   * Koordinator, Kasie Kepesantrenan, dan Kabid / Superadmin berhak. Musyrif TIDAK berhak.
+   */
+  const canUserHideActivity = useCallback((activity: ActivityItem): boolean => {
+    if (!user) return false;
+    if (user.role === 'KASIE_KEPESANTRENAN') return true;
+    if (user.role === 'KOORDINATOR' && user.unit === activity.unit) return true;
+    return false;
+  }, [user]);
+
+  /**
+   * Sembunyikan pemberitahuan dari panel Aktivitas & Pemberitahuan
+   * (Menghapus dari panel tanpa menghapus catatan pelanggaran atau data pembinaan asli)
+   */
+  const hideActivity = useCallback(async (
+    activityId: string, 
+    activity: ActivityItem
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!user) {
+      return { success: false, error: 'Sesi pengguna tidak valid.' };
+    }
+
+    // Otorisasi role ketat:
+    if (user.role === 'MUSYRIF') {
+      const err = 'Akses Ditolak: Musyrif tidak diperbolehkan menghapus atau menyembunyikan pemberitahuan melalui fitur ini.';
+      showToast('Akses Ditolak', err, 'error');
+      return { success: false, error: err };
+    }
+
+    if (user.role === 'KOORDINATOR' && user.unit !== activity.unit) {
+      const err = `Akses Ditolak: Anda hanya berwenang mengelola pemberitahuan untuk Unit ${user.unit}.`;
+      showToast('Akses Ditolak', err, 'error');
+      return { success: false, error: err };
+    }
+
+    try {
+      const newHidden = new Set(hiddenActivityIds);
+      newHidden.add(activityId);
+      setHiddenActivityIds(newHidden);
+
+      // Simpan ke storage lokal terisolasi per lingkungan
+      const storageKey = `SIMKA_HIDDEN_ACTIVITIES_${APP_ENVIRONMENT}`;
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(Array.from(newHidden)));
+      } catch (e) {
+        console.warn('Gagal menyimpan hidden activities ke localStorage:', e);
+      }
+
+      // Simpan audit ke Supabase tanpa mengubah riwayat asli
+      insertHiddenNotificationToDB({
+        activityId,
+        sourceId: activity.sourceId || activity.id.replace(/^act-(plg|pbn)-/, ''),
+        activityType: activity.type,
+        unit: activity.unit,
+        lingkungan: APP_ENVIRONMENT,
+        hiddenByUserId: user.id,
+        hiddenByNama: user.nama,
+        hiddenByRole: user.role
+      }).catch((e) => {
+        console.warn('Notice saving hidden notification to Supabase:', e);
+      });
+
+      showToast('Pemberitahuan Disembunyikan', 'Pemberitahuan telah berhasil disembunyikan dari panel.', 'info');
+      return { success: true };
+    } catch (err: any) {
+      showToast('Gagal', err?.message || 'Gagal menyembunyikan pemberitahuan.', 'error');
+      return { success: false, error: err?.message };
+    }
+  }, [user, hiddenActivityIds]);
 
   const getMonthlyData = () => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -2300,6 +2764,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         getPembinaanBySinglePoin,
         catatPelanggaranBaru,
         toggleStatusPelanggaran,
+        tandaiPelanggaranSelesai,
         updateUserPassword,
         stats,
         getMonthlyData,
@@ -2310,6 +2775,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         getTopPelanggaran,
         getRecentPembinaan,
         getRecentActivities,
+        hideActivity,
+        canUserHideActivity,
+        appEnvironment: APP_ENVIRONMENT,
         isDatabaseModalOpen,
         setIsDatabaseModalOpen,
         openDatabaseModal,

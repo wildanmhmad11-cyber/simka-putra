@@ -20,7 +20,8 @@ import {
   Search,
   UserCheck,
   Eye,
-  GraduationCap
+  GraduationCap,
+  Trash2
 } from 'lucide-react';
 import {
   BarChart,
@@ -36,6 +37,8 @@ import {
   Legend
 } from 'recharts';
 import { MosqueLogoIcon } from '../layout/IslamicPattern';
+import { ActivityItem } from '../../types';
+import { HideNotificationModal } from '../common/HideNotificationModal';
 
 export const DashboardView: React.FC = () => {
   const {
@@ -48,10 +51,15 @@ export const DashboardView: React.FC = () => {
     getTopPelanggaran,
     getRecentActivities,
     setSelectedSantriForDetail,
-    setCurrentRoute
+    setCurrentRoute,
+    allSantriList,
+    selectedKasieUnitFilter,
+    hideActivity,
+    canUserHideActivity
   } = useApp();
 
   const [selectedYear, setSelectedYear] = useState('2026');
+  const [activityToHide, setActivityToHide] = useState<ActivityItem | null>(null);
 
   const monthlyData = getMonthlyData();
   const donutData = getDonutData();
@@ -146,9 +154,13 @@ export const DashboardView: React.FC = () => {
         </div>
 
         {/* KPI 3: BELUM SELESAI */}
-        <div className="rounded-xl sm:rounded-2xl bg-white dark:bg-[#101C2F] border border-slate-200/90 dark:border-[#1E3048] p-3.5 sm:p-5 shadow-xs flex items-center justify-between transition-colors">
+        <div 
+          onClick={() => setCurrentRoute('rekap-pelanggaran')}
+          className="rounded-xl sm:rounded-2xl bg-white dark:bg-[#101C2F] border border-slate-200/90 dark:border-[#1E3048] p-3.5 sm:p-5 shadow-xs flex items-center justify-between transition-colors cursor-pointer hover:border-amber-400 dark:hover:border-amber-500/60 group"
+          title="Klik untuk melihat Rekap Riwayat Pelanggaran Belum Selesai"
+        >
           <div>
-            <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
               Belum Selesai
             </p>
             <h3 className="text-xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 mt-0.5 sm:mt-1">
@@ -158,15 +170,19 @@ export const DashboardView: React.FC = () => {
               Butuh tindak lanjut
             </p>
           </div>
-          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 ml-1.5">
+          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 ml-1.5 group-hover:scale-105 transition-transform">
             <Clock className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
         </div>
 
         {/* KPI 4: TERSELESAIKAN */}
-        <div className="rounded-xl sm:rounded-2xl bg-white dark:bg-[#101C2F] border border-slate-200/90 dark:border-[#1E3048] p-3.5 sm:p-5 shadow-xs flex items-center justify-between transition-colors">
+        <div 
+          onClick={() => setCurrentRoute('rekap-pelanggaran')}
+          className="rounded-xl sm:rounded-2xl bg-white dark:bg-[#101C2F] border border-slate-200/90 dark:border-[#1E3048] p-3.5 sm:p-5 shadow-xs flex items-center justify-between transition-colors cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-500/60 group"
+          title="Klik untuk melihat Rekap Riwayat Pelanggaran Selesai"
+        >
           <div>
-            <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
               Terseelesaikan
             </p>
             <h3 className="text-xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5 sm:mt-1">
@@ -176,7 +192,7 @@ export const DashboardView: React.FC = () => {
               Tindakan tuntas
             </p>
           </div>
-          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5">
+          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5 group-hover:scale-105 transition-transform">
             <CheckCircle2 className="w-4 h-4 sm:w-6 sm:h-6" />
           </div>
         </div>
@@ -572,6 +588,147 @@ export const DashboardView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* AKTIVITAS & PEMBERITAHUAN TERKINI (DASHBOARD WIDGET) */}
+      <div className="rounded-xl sm:rounded-2xl bg-white dark:bg-[#101C2F] border border-slate-200/90 dark:border-[#1E3048] p-4 sm:p-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-slate-100 dark:border-[#1C2F4D]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                Aktivitas & Pemberitahuan
+              </h3>
+              <p className="text-[10.5px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Pencatatan pelanggaran dan penanganan pembinaan mutakhir sesuai wewenang unit Anda
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="text-[10px] sm:text-[11px] px-2.5 py-1 rounded-lg font-bold bg-slate-100 dark:bg-[#0A1322] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#1E3048]">
+              {user?.role === 'KASIE_KEPESANTRENAN' 
+                ? (selectedKasieUnitFilter === 'ALL' ? 'Semua Unit (SMP, MA, SMA)' : `Unit ${selectedKasieUnitFilter}`)
+                : `Unit ${user?.unit}`}
+            </span>
+            <button
+              onClick={() => setCurrentRoute('rekap-pelanggaran')}
+              className="text-[11px] sm:text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <span>Semua Riwayat</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {recentActivities.length === 0 ? (
+          <div className="py-10 text-center text-slate-400">
+            <Clock className="w-8 h-8 mx-auto mb-2 opacity-30 text-emerald-500" />
+            <p className="text-xs italic font-medium">
+              Belum ada aktivitas terbaru hari ini untuk cakupan unit Anda.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            {recentActivities.map((act) => {
+              const isPelanggaran = act.type === 'pelanggaran';
+              const matchedSantri = act.santriId ? allSantriList.find((s) => s.id === act.santriId) : undefined;
+
+              return (
+                <div
+                  key={act.id}
+                  onClick={() => {
+                    if (matchedSantri) {
+                      setSelectedSantriForDetail(matchedSantri);
+                    } else {
+                      setCurrentRoute(isPelanggaran ? 'rekap-pelanggaran' : 'riwayat-pembinaan');
+                    }
+                  }}
+                  className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#0A1322]/80 border border-slate-200/80 dark:border-[#1A2D48] hover:border-emerald-500/50 dark:hover:border-emerald-500/50 transition-all cursor-pointer group hover:shadow-xs"
+                >
+                  {/* Baris 1: Judul [Pelanggaran: / Pembinaan: Nama] & Unit Badge & Aksi Hapus */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                        isPelanggaran 
+                          ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40' 
+                          : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40'
+                      }`}>
+                        {isPelanggaran ? (
+                          <ShieldAlert className="w-3.5 h-3.5" />
+                        ) : (
+                          <UserCheck className="w-3.5 h-3.5" />
+                        )}
+                      </div>
+                      <h4 className="text-xs sm:text-[13px] font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors truncate">
+                        {act.title}
+                      </h4>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-white dark:bg-[#15253F] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#1E3048]">
+                        Unit {act.unit}
+                      </span>
+                      {canUserHideActivity(act) && (
+                        <button
+                          type="button"
+                          title="Hapus pemberitahuan"
+                          aria-label="Hapus pemberitahuan"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActivityToHide(act);
+                          }}
+                          className="p-1 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-500/80 hover:text-rose-600 dark:text-rose-400/80 dark:hover:text-rose-400" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Baris 2: Detail [Nama Jenis Pelanggaran] • [Jumlah Poin] poin */}
+                  <div className="mt-2 pl-8">
+                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-100 line-clamp-1">
+                      {act.detailLine || act.desc}
+                    </p>
+
+                    {/* Baris 3: Informasi pencatat: Dicatat oleh: [Nama Pengguna/Petugas] */}
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                      {act.infoPencatat}
+                    </p>
+
+                    {/* Baris 4: Informasi tambahan [Kelas • Unit] & Waktu sebenarnya */}
+                    <div className="mt-2 pt-2 border-t border-slate-200/50 dark:border-[#15253F] flex items-center justify-between gap-2 text-[10.5px]">
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <GraduationCap className="w-3 h-3" />
+                        <span>{act.infoTambahan}</span>
+                      </span>
+
+                      <span className="text-slate-400 dark:text-slate-500 font-mono flex items-center gap-1 shrink-0">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        <span>{act.timeFormatted}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Modal Konfirmasi Sembunyikan Pemberitahuan */}
+      <HideNotificationModal
+        isOpen={Boolean(activityToHide)}
+        activity={activityToHide}
+        onClose={() => setActivityToHide(null)}
+        onConfirm={async () => {
+          if (activityToHide) {
+            await hideActivity(activityToHide.id, activityToHide);
+          }
+        }}
+      />
     </div>
   );
 };

@@ -15,12 +15,18 @@ import {
   X,
   User,
   Shield,
+  ShieldAlert,
+  Clock,
+  ArrowRight,
+  GraduationCap,
   LogOut,
   ExternalLink,
-  Radio
+  Radio,
+  Trash2
 } from 'lucide-react';
-import { UnitFilter } from '../../types';
+import { UnitFilter, ActivityItem } from '../../types';
 import { getRoleDisplayName } from '../../lib/auth';
+import { HideNotificationModal } from '../common/HideNotificationModal';
 
 interface TopNavigationProps {
   onOpenSidebar: () => void;
@@ -37,13 +43,16 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ onOpenSidebar }) =
     allSantriList,
     pelanggaranList,
     setSelectedSantriForDetail,
-    getRecentActivities
+    getRecentActivities,
+    hideActivity,
+    canUserHideActivity
   } = useApp();
 
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [activityToHide, setActivityToHide] = useState<ActivityItem | null>(null);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -192,7 +201,7 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ onOpenSidebar }) =
 
               {/* Notification Popover */}
               {notificationOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#0E1A2E] border border-slate-200 dark:border-[#1E3048] shadow-2xl z-50 p-4 animate-in fade-in duration-150">
+                <div className="absolute right-0 mt-2 w-80 sm:w-[420px] rounded-2xl bg-white dark:bg-[#0E1A2E] border border-slate-200 dark:border-[#1E3048] shadow-2xl z-50 p-4 animate-in fade-in duration-150">
                   <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-[#1C2F4D]">
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-emerald-500" />
@@ -200,36 +209,133 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ onOpenSidebar }) =
                         Aktivitas & Pemberitahuan
                       </h4>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-bold">
-                      Terbaru
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#15253F] text-slate-600 dark:text-slate-300 font-bold border border-slate-200 dark:border-[#1E3048]">
+                        {user?.role === 'KASIE_KEPESANTRENAN' 
+                          ? (selectedKasieUnitFilter === 'ALL' ? 'Semua Unit' : `Unit ${selectedKasieUnitFilter}`)
+                          : `Unit ${user?.unit}`}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-300/40 dark:border-emerald-800/40">
+                        Terbaru
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="divide-y divide-slate-100 dark:divide-[#192A45] max-h-80 overflow-y-auto mt-2">
+                  <div className="divide-y divide-slate-100 dark:divide-[#192A45] max-h-96 overflow-y-auto mt-2 pr-0.5">
                     {recentActivities.length === 0 ? (
-                      <p className="text-xs text-slate-500 py-4 text-center">
-                        Belum ada aktivitas terbaru hari ini.
-                      </p>
+                      <div className="py-8 text-center text-slate-400">
+                        <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                        <p className="text-xs italic font-medium">
+                          Belum ada aktivitas terbaru untuk cakupan unit Anda.
+                        </p>
+                      </div>
                     ) : (
-                      recentActivities.map((act) => (
-                        <div key={act.id} className="py-2.5 px-1 hover:bg-slate-50 dark:hover:bg-[#13233D] rounded-lg transition-colors">
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 line-clamp-1">
-                              {act.title}
-                            </span>
-                            <span className="text-[10px] text-slate-500 shrink-0">
-                              Unit {act.unit}
-                            </span>
+                      recentActivities.map((act) => {
+                        const isPelanggaran = act.type === 'pelanggaran';
+                        const matchedSantri = act.santriId ? allSantriList.find((s) => s.id === act.santriId) : undefined;
+
+                        return (
+                          <div
+                            key={act.id}
+                            onClick={() => {
+                              if (matchedSantri) {
+                                setSelectedSantriForDetail(matchedSantri);
+                                setNotificationOpen(false);
+                              } else {
+                                setCurrentRoute(isPelanggaran ? 'rekap-pelanggaran' : 'riwayat-pembinaan');
+                                setNotificationOpen(false);
+                              }
+                            }}
+                            className="py-3 px-2 hover:bg-slate-50 dark:hover:bg-[#13233D] rounded-xl transition-colors cursor-pointer group"
+                          >
+                            {/* Baris Judul & Badge Unit & Aksi Hapus */}
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
+                                  isPelanggaran 
+                                    ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400' 
+                                    : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+                                }`}>
+                                  {isPelanggaran ? (
+                                    <ShieldAlert className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <UserCheck className="w-3.5 h-3.5" />
+                                  )}
+                                </div>
+                                <span className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors truncate">
+                                  {act.title}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                <span className="text-[9.5px] px-1.5 py-0.5 rounded font-bold bg-slate-100 dark:bg-[#182B48] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#223B60]">
+                                  Unit {act.unit}
+                                </span>
+                                {canUserHideActivity(act) && (
+                                  <button
+                                    type="button"
+                                    title="Hapus pemberitahuan"
+                                    aria-label="Hapus pemberitahuan"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActivityToHide(act);
+                                    }}
+                                    className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3 h-3 text-rose-500/80 hover:text-rose-600 dark:text-rose-400/80 dark:hover:text-rose-400" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Baris Detail: [Nama Jenis Pelanggaran] • [Jumlah Poin] poin */}
+                            <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 mt-1 pl-6">
+                              {act.detailLine || act.desc}
+                            </p>
+
+                            {/* Informasi Pencatat: Dicatat oleh: [Nama Pengguna/Petugas] */}
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 pl-6 font-medium">
+                              {act.infoPencatat}
+                            </p>
+
+                            {/* Informasi Tambahan & Waktu Sebenarnya */}
+                            <div className="mt-1.5 pl-6 flex items-center justify-between gap-2 text-[10px]">
+                              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                {act.infoTambahan}
+                              </span>
+                              <span className="text-slate-400 dark:text-slate-500 font-mono flex items-center gap-1 shrink-0">
+                                <Clock className="w-3 h-3 text-slate-400" />
+                                <span>{act.timeFormatted}</span>
+                              </span>
+                            </div>
                           </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                            {act.desc}
-                          </p>
-                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 inline-block font-medium">
-                            {act.timeFormatted}
-                          </span>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
+                  </div>
+
+                  {/* Footer Link to Rekap */}
+                  <div className="pt-2.5 mt-2 border-t border-slate-100 dark:border-[#1C2F4D] flex items-center justify-between text-[11px]">
+                    <button
+                      onClick={() => {
+                        setCurrentRoute('rekap-pelanggaran');
+                        setNotificationOpen(false);
+                      }}
+                      className="text-emerald-600 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Rekap Pelanggaran</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCurrentRoute('riwayat-pembinaan');
+                        setNotificationOpen(false);
+                      }}
+                      className="text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Riwayat Pembinaan</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
                   </div>
                 </div>
               )}
@@ -422,6 +528,18 @@ export const TopNavigation: React.FC<TopNavigationProps> = ({ onOpenSidebar }) =
           </div>
         </div>
       )}
+
+      {/* Modal Konfirmasi Sembunyikan Pemberitahuan */}
+      <HideNotificationModal
+        isOpen={Boolean(activityToHide)}
+        activity={activityToHide}
+        onClose={() => setActivityToHide(null)}
+        onConfirm={async () => {
+          if (activityToHide) {
+            await hideActivity(activityToHide.id, activityToHide);
+          }
+        }}
+      />
     </>
   );
 };

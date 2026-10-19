@@ -4,6 +4,7 @@ import { RiwayatPelanggaran } from '../types';
 
 export interface ExportPdfOptions {
   unitFilter?: string;
+  statusFilter?: string;
   searchQuery?: string;
   userRole?: string;
   userName?: string;

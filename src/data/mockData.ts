@@ -9,6 +9,7 @@ export const initialUsers: UserAccount[] = [
     username: 'kasie',
     role: 'KASIE_KEPESANTRENAN',
     unit: 'ALL',
+    lingkungan: 'PUTRI',
     is_active: true,
     email: 'kasie@simka.id',
     title: 'Kepala Seksi Kepesantrenan & Kedisiplinan Yayasan',
@@ -23,9 +24,10 @@ export const initialUsers: UserAccount[] = [
     username: 'koor.smp',
     role: 'KOORDINATOR',
     unit: 'SMP',
+    lingkungan: 'PUTRI',
     is_active: true,
     email: 'koor.smp@simka.id',
-    title: 'Koordinator Kedisiplinan Unit SMP',
+    title: 'Koordinator Kedisiplinan Unit SMP Putri',
     password_hash: hashPasswordSync('smp123'),
     created_at: '2026-01-01T00:00:00Z'
   },
@@ -35,9 +37,10 @@ export const initialUsers: UserAccount[] = [
     username: 'musyrif.smp1',
     role: 'MUSYRIF',
     unit: 'SMP',
+    lingkungan: 'PUTRI',
     is_active: true,
     email: 'salman.smp@simka.id',
-    title: 'Musyrif Asrama SMP (Kelas 7 & 8)',
+    title: 'Musyrifah Asrama SMP Putri (Kelas 7 & 8)',
     password_hash: hashPasswordSync('smp123'),
     created_at: '2026-01-01T00:00:00Z'
   },
@@ -47,9 +50,10 @@ export const initialUsers: UserAccount[] = [
     username: 'musyrif.smp2',
     role: 'MUSYRIF',
     unit: 'SMP',
+    lingkungan: 'PUTRI',
     is_active: true,
     email: 'bilal.smp@simka.id',
-    title: 'Musyrif Asrama SMP (Kelas 9)',
+    title: 'Musyrifah Asrama SMP Putri (Kelas 9)',
     password_hash: hashPasswordSync('smp123'),
     created_at: '2026-01-01T00:00:00Z'
   },
@@ -61,9 +65,10 @@ export const initialUsers: UserAccount[] = [
     username: 'koor.ma',
     role: 'KOORDINATOR',
     unit: 'MA',
+    lingkungan: 'PUTRI',
     is_active: true,
     email: 'wildan.fanani@simka.id',
-    title: 'Koordinator Pembinaan Karakter & Akhlak Santri MA',
+    title: 'Koordinator Pembinaan Karakter & Akhlak Santri MA Putri',
     password_hash: hashPasswordSync('ma123'),
     created_at: '2026-01-01T00:00:00Z'
   },
@@ -73,9 +78,10 @@ export const initialUsers: UserAccount[] = [
     username: 'musyrif.ma1',
     role: 'MUSYRIF',
     unit: 'MA',
+    lingkungan: 'PUTRI',
     is_active: true,
     email: 'ahmad.fauzan@simka.id',
-    title: 'Musyrif Asrama MA (Kelas 10)',
+    title: 'Musyrifah Asrama MA Putri (Kelas 10)',
     password_hash: hashPasswordSync('ma123'),
     created_at: '2026-01-01T00:00:00Z'
   },
@@ -85,9 +91,10 @@ export const initialUsers: UserAccount[] = [
     username: 'musyrif.ma2',
     role: 'MUSYRIF',
     unit: 'MA',
+    lingkungan: 'PUTRI',
     is_active: true,
     email: 'ridwan.kamil@simka.id',
-    title: 'Musyrif Asrama MA (Kelas 11 & 12)',
+    title: 'Musyrifah Asrama MA Putri (Kelas 11 & 12)',
     password_hash: hashPasswordSync('ma123'),
     created_at: '2026-01-01T00:00:00Z'
   },
@@ -99,9 +106,10 @@ export const initialUsers: UserAccount[] = [
     username: 'koor.sma',
     role: 'KOORDINATOR',
     unit: 'SMA',
+    lingkungan: 'PUTRI',
     is_active: true,
     email: 'koor.sma@simka.id',
-    title: 'Koordinator Kedisiplinan Unit SMA',
+    title: 'Koordinator Kedisiplinan Unit SMA Putri',
     password_hash: hashPasswordSync('sma123'),
     created_at: '2026-01-01T00:00:00Z'
   },
@@ -111,9 +119,10 @@ export const initialUsers: UserAccount[] = [
     username: 'musyrif.sma1',
     role: 'MUSYRIF',
     unit: 'SMA',
+    lingkungan: 'PUTRI',
     is_active: true,
     email: 'tariq.sma@simka.id',
-    title: 'Musyrif Asrama SMA (Kelas X)',
+    title: 'Musyrifah Asrama SMA Putri (Kelas X)',
     password_hash: hashPasswordSync('sma123'),
     created_at: '2026-01-01T00:00:00Z'
   },
@@ -123,9 +132,10 @@ export const initialUsers: UserAccount[] = [
     username: 'musyrif.sma2',
     role: 'MUSYRIF',
     unit: 'SMA',
+    lingkungan: 'PUTRI',
     is_active: true,
     email: 'khalid.sma@simka.id',
-    title: 'Musyrif Asrama SMA (Kelas XI & XII)',
+    title: 'Musyrifah Asrama SMA Putri (Kelas XI & XII)',
     password_hash: hashPasswordSync('sma123'),
     created_at: '2026-01-01T00:00:00Z'
   }
@@ -264,63 +274,62 @@ export const initialPelanggaranList: Pelanggaran[] = [
   }
 ];
 
-// Pre-defined MA Santri list (Key records preserved)
+// Pre-defined MA Santri Putri list (Key records preserved and structured for lingkungan PUTRI)
 const specificMASantri: Santri[] = [
-  { id: 's-ma-001', nis: '20261001', nama: 'ABDILLAH AKMAL AL FATIH', kelas: '10.1', unit: 'MA', totalPoin: 100, statusPembinaan: 'Dikeluarkan', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Abu Bakar', kamar: 'Abu Bakar 01' },
-  { id: 's-ma-002', nis: '20261002', nama: 'ABDUR ROFI', kelas: '11.1', unit: 'MA', totalPoin: 50, statusPembinaan: 'SP 1', musyrifId: 'usr-musy-ma2', musyrifNama: 'Ust. Ridwan Kamil, Lc', asrama: 'Asrama Umar', kamar: 'Umar 03' },
-  { id: 's-ma-003', nis: '20261003', nama: 'BIMA MAHARDIKA', kelas: '10.1', unit: 'MA', totalPoin: 0, statusPembinaan: 'Baik', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Abu Bakar', kamar: 'Abu Bakar 02' },
-  { id: 's-ma-004', nis: '20261004', nama: 'DAMARGALIH JAFAR MOHAMMAD', kelas: '10.1', unit: 'MA', totalPoin: 100, statusPembinaan: 'SP 3', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Abu Bakar', kamar: 'Abu Bakar 03' },
-  { id: 's-ma-005', nis: '20261005', nama: 'FAIDHURRAHMAN INFIROZ', kelas: '10.1', unit: 'MA', totalPoin: 5, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Abu Bakar', kamar: 'Abu Bakar 04' },
-  { id: 's-ma-006', nis: '20261006', nama: 'HAFIZH KHAIRUN NIAM', kelas: '10.1', unit: 'MA', totalPoin: 100, statusPembinaan: 'SP 3', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Abu Bakar', kamar: 'Abu Bakar 01' },
-  { id: 's-ma-007', nis: '20261007', nama: 'HAYA RAIHANAH', kelas: '12.3', unit: 'MA', totalPoin: 50, statusPembinaan: 'SP 1', musyrifId: 'usr-musy-ma2', musyrifNama: 'Ust. Ridwan Kamil, Lc', asrama: 'Asrama Khadijah', kamar: 'Aisyah 05' },
-  { id: 's-ma-008', nis: '20261008', nama: 'KUNCORO SATRIO WICAKSONO', kelas: '10.1', unit: 'MA', totalPoin: 0, statusPembinaan: 'Baik', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Abu Bakar', kamar: 'Abu Bakar 02' },
-  { id: 's-ma-009', nis: '20261009', nama: 'MUHAMMAD RADIX NUR AL FATIH AN NAWAWI', kelas: '10.2', unit: 'MA', totalPoin: 20, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Utsman', kamar: 'Utsman 01' },
-  { id: 's-ma-010', nis: '20261010', nama: 'MUHAMMAD SIRAJ', kelas: '10.1', unit: 'MA', totalPoin: 70, statusPembinaan: 'SP 2', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Abu Bakar', kamar: 'Abu Bakar 05' },
-  { id: 's-ma-011', nis: '20261011', nama: 'NADIA TSURAYYA ABDILLAH', kelas: '11.2', unit: 'MA', totalPoin: 50, statusPembinaan: 'SP 1', musyrifId: 'usr-musy-ma2', musyrifNama: 'Ust. Ridwan Kamil, Lc', asrama: 'Asrama Khadijah', kamar: 'Khadijah 02' },
-  { id: 's-ma-012', nis: '20261012', nama: 'NAUFAL SAQIF IRSYADUL IBAD', kelas: '12.1', unit: 'MA', totalPoin: 5, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-ma2', musyrifNama: 'Ust. Ridwan Kamil, Lc', asrama: 'Asrama Ali', kamar: 'Ali 03' },
-  { id: 's-ma-013', nis: '20261013', nama: 'TSALISA HANINA DHIYA ULHAQ', kelas: '12.3', unit: 'MA', totalPoin: 50, statusPembinaan: 'SP 1', musyrifId: 'usr-musy-ma2', musyrifNama: 'Ust. Ridwan Kamil, Lc', asrama: 'Asrama Khadijah', kamar: 'Aisyah 04' }
+  { id: 's-ma-001', nis: '20261001', nama: 'AFIFAH NURUL AINI', kelas: '10.1', unit: 'MA', lingkungan: 'PUTRI', totalPoin: 100, statusPembinaan: 'Dikeluarkan', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Khadijah', kamar: 'Khadijah 01' },
+  { id: 's-ma-002', nis: '20261002', nama: 'AISYAH AZ-ZAHRA', kelas: '11.1', unit: 'MA', lingkungan: 'PUTRI', totalPoin: 50, statusPembinaan: 'SP 1', musyrifId: 'usr-musy-ma2', musyrifNama: 'Ust. Ridwan Kamil, Lc', asrama: 'Asrama Aisyah', kamar: 'Aisyah 01' },
+  { id: 's-ma-003', nis: '20261003', nama: 'BILQIS UMAIRAH', kelas: '10.1', unit: 'MA', lingkungan: 'PUTRI', totalPoin: 0, statusPembinaan: 'Baik', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Khadijah', kamar: 'Khadijah 02' },
+  { id: 's-ma-004', nis: '20261004', nama: 'DURRATUN NASIHAH', kelas: '10.1', unit: 'MA', lingkungan: 'PUTRI', totalPoin: 75, statusPembinaan: 'SP 2', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Khadijah', kamar: 'Khadijah 03' },
+  { id: 's-ma-005', nis: '20261005', nama: 'FATHIMAH AL-BATOOL', kelas: '10.1', unit: 'MA', lingkungan: 'PUTRI', totalPoin: 5, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Fatimah', kamar: 'Fatimah 01' },
+  { id: 's-ma-006', nis: '20261006', nama: 'HANIFAH SHALIHAH', kelas: '10.1', unit: 'MA', lingkungan: 'PUTRI', totalPoin: 15, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Aisyah', kamar: 'Aisyah 02' },
+  { id: 's-ma-007', nis: '20261007', nama: 'HAYA RAIHANAH', kelas: '12.3', unit: 'MA', lingkungan: 'PUTRI', totalPoin: 50, statusPembinaan: 'SP 1', musyrifId: 'usr-musy-ma2', musyrifNama: 'Ust. Ridwan Kamil, Lc', asrama: 'Asrama Khadijah', kamar: 'Aisyah 05' },
+  { id: 's-ma-008', nis: '20261008', nama: 'KHANSA NABILAH', kelas: '10.1', unit: 'MA', lingkungan: 'PUTRI', totalPoin: 0, statusPembinaan: 'Baik', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Khadijah', kamar: 'Khadijah 04' },
+  { id: 's-ma-009', nis: '20261009', nama: 'MARYAM AZ-ZAHIDAH', kelas: '10.2', unit: 'MA', lingkungan: 'PUTRI', totalPoin: 20, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Maryam', kamar: 'Maryam 01' },
+  { id: 's-ma-010', nis: '20261010', nama: 'MUTIA RAHMANIA', kelas: '10.1', unit: 'MA', lingkungan: 'PUTRI', totalPoin: 50, statusPembinaan: 'SP 1', musyrifId: 'usr-musy-ma1', musyrifNama: 'Ust. Ahmad Fauzan, S.Pd', asrama: 'Asrama Fatimah', kamar: 'Fatimah 02' },
+  { id: 's-ma-011', nis: '20261011', nama: 'NADIA TSURAYYA ABDILLAH', kelas: '11.2', unit: 'MA', lingkungan: 'PUTRI', totalPoin: 50, statusPembinaan: 'SP 1', musyrifId: 'usr-musy-ma2', musyrifNama: 'Ust. Ridwan Kamil, Lc', asrama: 'Asrama Khadijah', kamar: 'Khadijah 02' },
+  { id: 's-ma-012', nis: '20261012', nama: 'NAURA SHAFWAH', kelas: '12.1', unit: 'MA', lingkungan: 'PUTRI', totalPoin: 5, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-ma2', musyrifNama: 'Ust. Ridwan Kamil, Lc', asrama: 'Asrama Aisyah', kamar: 'Aisyah 03' },
+  { id: 's-ma-013', nis: '20261013', nama: 'TSALISA HANINA DHIYA ULHAQ', kelas: '12.3', unit: 'MA', lingkungan: 'PUTRI', totalPoin: 50, statusPembinaan: 'SP 1', musyrifId: 'usr-musy-ma2', musyrifNama: 'Ust. Ridwan Kamil, Lc', asrama: 'Asrama Khadijah', kamar: 'Aisyah 04' }
 ];
 
-// Pre-defined SMP Santri list
+// Pre-defined SMP Santri Putri list
 const specificSMPSantri: Santri[] = [
-  { id: 's-smp-001', nis: '20267001', nama: 'ALIF RAYYAN PRATAMA', kelas: '7A', unit: 'SMP', totalPoin: 20, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-smp1', musyrifNama: 'Ust. Salman Al-Farisi', asrama: 'Asrama Thariq', kamar: 'Thariq 01' },
-  { id: 's-smp-002', nis: '20267002', nama: 'BILAL AL-GHAZALI', kelas: '7B', unit: 'SMP', totalPoin: 0, statusPembinaan: 'Baik', musyrifId: 'usr-musy-smp1', musyrifNama: 'Ust. Salman Al-Farisi', asrama: 'Asrama Thariq', kamar: 'Thariq 02' },
-  { id: 's-smp-003', nis: '20268001', nama: 'DANISH FATHAN RABBANI', kelas: '8A', unit: 'SMP', totalPoin: 35, statusPembinaan: 'SP 1', musyrifId: 'usr-musy-smp1', musyrifNama: 'Ust. Salman Al-Farisi', asrama: 'Asrama Zubair', kamar: 'Zubair 01' },
-  { id: 's-smp-004', nis: '20268002', nama: 'DZAKY HILAL MUBARAK', kelas: '8B', unit: 'SMP', totalPoin: 0, statusPembinaan: 'Baik', musyrifId: 'usr-musy-smp1', musyrifNama: 'Ust. Salman Al-Farisi', asrama: 'Asrama Zubair', kamar: 'Zubair 02' },
-  { id: 's-smp-005', nis: '20269001', nama: 'FAHRI HAMZAH SYARIF', kelas: '9A', unit: 'SMP', totalPoin: 50, statusPembinaan: 'SP 2', musyrifId: 'usr-musy-smp2', musyrifNama: 'Ust. Bilal bin Rabah', asrama: 'Asrama Saad', kamar: 'Saad 01' },
-  { id: 's-smp-006', nis: '20269002', nama: 'HABIB IZZATURRAHMAN', kelas: '9B', unit: 'SMP', totalPoin: 10, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-smp2', musyrifNama: 'Ust. Bilal bin Rabah', asrama: 'Asrama Saad', kamar: 'Saad 02' }
+  { id: 's-smp-001', nis: '20267001', nama: 'AISYAH NUR FATIMAH', kelas: '7A', unit: 'SMP', lingkungan: 'PUTRI', totalPoin: 20, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-smp1', musyrifNama: 'Ust. Salman Al-Farisi', asrama: 'Asrama Hafshah', kamar: 'Hafshah 01' },
+  { id: 's-smp-002', nis: '20267002', nama: 'FARIDAH AZ-ZAHRA', kelas: '7B', unit: 'SMP', lingkungan: 'PUTRI', totalPoin: 0, statusPembinaan: 'Baik', musyrifId: 'usr-musy-smp1', musyrifNama: 'Ust. Salman Al-Farisi', asrama: 'Asrama Hafshah', kamar: 'Hafshah 02' },
+  { id: 's-smp-003', nis: '20268001', nama: 'NURUL IZZAH', kelas: '8A', unit: 'SMP', lingkungan: 'PUTRI', totalPoin: 35, statusPembinaan: 'SP 1', musyrifId: 'usr-musy-smp1', musyrifNama: 'Ust. Salman Al-Farisi', asrama: 'Asrama Rufaidah', kamar: 'Rufaidah 01' },
+  { id: 's-smp-004', nis: '20268002', nama: 'SALMA SALSABILA', kelas: '8B', unit: 'SMP', lingkungan: 'PUTRI', totalPoin: 0, statusPembinaan: 'Baik', musyrifId: 'usr-musy-smp1', musyrifNama: 'Ust. Salman Al-Farisi', asrama: 'Asrama Rufaidah', kamar: 'Rufaidah 02' },
+  { id: 's-smp-005', nis: '20269001', nama: 'ZAHRA KHAIRUNNISA', kelas: '9A', unit: 'SMP', lingkungan: 'PUTRI', totalPoin: 50, statusPembinaan: 'SP 2', musyrifId: 'usr-musy-smp2', musyrifNama: 'Ust. Bilal bin Rabah', asrama: 'Asrama Asma', kamar: 'Asma 01' },
+  { id: 's-smp-006', nis: '20269002', nama: 'SYIFA FAUZIYAH', kelas: '9B', unit: 'SMP', lingkungan: 'PUTRI', totalPoin: 10, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-smp2', musyrifNama: 'Ust. Bilal bin Rabah', asrama: 'Asrama Asma', kamar: 'Asma 02' }
 ];
 
-// Pre-defined SMA Santri list
+// Pre-defined SMA Santri Putri list
 const specificSMASantri: Santri[] = [
-  { id: 's-sma-001', nis: '20266001', nama: 'ARYA BIMA SETIAWAN', kelas: 'X-A', unit: 'SMA', totalPoin: 15, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-sma1', musyrifNama: 'Ust. Tariq bin Ziyad', asrama: 'Asrama Khalid', kamar: 'Khalid 01' },
-  { id: 's-sma-002', nis: '20266002', nama: 'FARHAN MAULANA WIJAYA', kelas: 'X-B', unit: 'SMA', totalPoin: 0, statusPembinaan: 'Baik', musyrifId: 'usr-musy-sma1', musyrifNama: 'Ust. Tariq bin Ziyad', asrama: 'Asrama Khalid', kamar: 'Khalid 02' },
-  { id: 's-sma-003', nis: '20265001', nama: 'IKHSAN NURRAHMAN', kelas: 'XI-IPA', unit: 'SMA', totalPoin: 50, statusPembinaan: 'SP 1', musyrifId: 'usr-musy-sma2', musyrifNama: 'Ust. Khalid bin Walid', asrama: 'Asrama Hamzah', kamar: 'Hamzah 01' },
-  { id: 's-sma-004', nis: '20265002', nama: 'MALIK AL-FARUQ', kelas: 'XI-IPS', unit: 'SMA', totalPoin: 70, statusPembinaan: 'SP 2', musyrifId: 'usr-musy-sma2', musyrifNama: 'Ust. Khalid bin Walid', asrama: 'Asrama Hamzah', kamar: 'Hamzah 02' },
-  { id: 's-sma-005', nis: '20264001', nama: 'PASHA RADITYA UTOMO', kelas: 'XII-IPA', unit: 'SMA', totalPoin: 0, statusPembinaan: 'Baik', musyrifId: 'usr-musy-sma2', musyrifNama: 'Ust. Khalid bin Walid', asrama: 'Asrama Ja\'far', kamar: 'Ja\'far 01' },
-  { id: 's-sma-006', nis: '20264002', nama: 'RIZKI SYAHPUTRA HIDAYAT', kelas: 'XII-IPS', unit: 'SMA', totalPoin: 20, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-sma2', musyrifNama: 'Ust. Khalid bin Walid', asrama: 'Asrama Ja\'far', kamar: 'Ja\'far 02' }
+  { id: 's-sma-001', nis: '20266001', nama: 'ANISA RAHMAWATI', kelas: 'X-A', unit: 'SMA', lingkungan: 'PUTRI', totalPoin: 15, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-sma1', musyrifNama: 'Ust. Tariq bin Ziyad', asrama: 'Asrama Nusaibah', kamar: 'Nusaibah 01' },
+  { id: 's-sma-002', nis: '20266002', nama: 'DINA MARIANA', kelas: 'X-B', unit: 'SMA', lingkungan: 'PUTRI', totalPoin: 0, statusPembinaan: 'Baik', musyrifId: 'usr-musy-sma1', musyrifNama: 'Ust. Tariq bin Ziyad', asrama: 'Asrama Nusaibah', kamar: 'Nusaibah 02' },
+  { id: 's-sma-003', nis: '20265001', nama: 'HILDA KHAIRINA', kelas: 'XI-IPA', unit: 'SMA', lingkungan: 'PUTRI', totalPoin: 50, statusPembinaan: 'SP 1', musyrifId: 'usr-musy-sma2', musyrifNama: 'Ust. Khalid bin Walid', asrama: 'Asrama Sumayyah', kamar: 'Sumayyah 01' },
+  { id: 's-sma-004', nis: '20265002', nama: 'LAILA MAGHFIRAH', kelas: 'XI-IPS', unit: 'SMA', lingkungan: 'PUTRI', totalPoin: 70, statusPembinaan: 'SP 2', musyrifId: 'usr-musy-sma2', musyrifNama: 'Ust. Khalid bin Walid', asrama: 'Asrama Sumayyah', kamar: 'Sumayyah 02' },
+  { id: 's-sma-005', nis: '20264001', nama: 'MAULIDA SHALIHAH', kelas: 'XII-IPA', unit: 'SMA', lingkungan: 'PUTRI', totalPoin: 0, statusPembinaan: 'Baik', musyrifId: 'usr-musy-sma2', musyrifNama: 'Ust. Khalid bin Walid', asrama: 'Asrama Juwairiyah', kamar: 'Juwairiyah 01' },
+  { id: 's-sma-006', nis: '20264002', nama: 'ZULFA AMALIA', kelas: 'XII-IPS', unit: 'SMA', lingkungan: 'PUTRI', totalPoin: 20, statusPembinaan: 'Peringatan Lisan', musyrifId: 'usr-musy-sma2', musyrifNama: 'Ust. Khalid bin Walid', asrama: 'Asrama Juwairiyah', kamar: 'Juwairiyah 02' }
 ];
 
 const sampleFirstNames = [
-  'ABDULLAH', 'ADIT', 'AFFAN', 'AHMAD', 'ALIF', 'AMMAR', 'AQIL', 'ARYA', 'AZKA', 'BAGAS',
-  'BILAL', 'DANISH', 'DZAKY', 'FADHLI', 'FAHRI', 'FAISAL', 'FARHAN', 'FATHAN', 'FATIH', 'FIKRI',
-  'GHALIB', 'HABIB', 'HAMZAH', 'HANIF', 'HASAN', 'HILAL', 'HUSSEIN', 'IBRAHIM', 'IKHSAN', 'ILYAS',
-  'IRFAN', 'ISMAIL', 'IZZAT', 'KHALID', 'LUQMAN', 'MALIK', 'MAULANA', 'MIQDAD', 'MUAMMAR', 'NABIH',
-  'NAJIB', 'NASRULLAH', 'PASHA', 'RABBANI', 'RADITYA', 'RAFI', 'RAIHAN', 'RASYA', 'RAYYAN', 'REZA',
-  'RIDHO', 'RIZKI', 'SALMAN', 'SYAMIL', 'TARIQ', 'UMAR', 'WAHYU', 'YASIN', 'YUSUF', 'ZAID', 'ZAKI'
+  'AFIFAH', 'AISYAH', 'ALYA', 'ANISA', 'AZKADINA', 'BILQIS', 'DINA', 'DURRAH', 'FARIDA', 'FATHIMAH',
+  'HANIFAH', 'HASNA', 'HAYA', 'HILDA', 'IFFAH', 'KHANSA', 'LAILA', 'LUTFIYAH', 'MAISARAH', 'MARYAM',
+  'MAULIDA', 'MUTIA', 'NABILA', 'NADIA', 'NAURA', 'NURUL', 'QONITA', 'RAIHANA', 'RAIHANAH', 'RIFDAH',
+  'ROHMAH', 'RUFAIDAH', 'SAFIRA', 'SALMA', 'SARAH', 'SHOFIA', 'SYIFA', 'TALITHA', 'TSALISA', 'ULFAH',
+  'WARDAH', 'YASMIN', 'ZAHRA', 'ZULFA', 'ZALIKHA', 'KAMILA', 'KHAIRUNNISA', 'MAWADDAH', 'HUMAIRA'
 ];
 
 const sampleLastNames = [
-  'AL-FARUQ', 'AL-GHAZALI', 'AL-HADDAD', 'AL-QUDSI', 'ANSHARI', 'AR-RASYID', 'ASH-SHIDDIQ', 
-  'ATTAMIMI', 'AZ-ZAHIR', 'HAKIM', 'HIDAYAT', 'IBRAHIM', 'KURNIAWAN', 'MAULANA', 'MUBARAK', 
-  'MUSTAFA', 'NURRAHMAN', 'PRATAMA', 'PUTRA', 'RAHMAN', 'RAMADHAN', 'SANTOSO', 'SETIAWAN', 
-  'SUHADA', 'SYAHPUTRA', 'SYARIF', 'UTOMO', 'WIJAYA', 'WIRATAMA', 'YULIANTO', 'ZULKARNAEN'
+  'AL-AZHARI', 'AL-HASYIMI', 'AL-QUDSI', 'AN-NAFISAH', 'AR-RASYIDAH', 'ASH-SHIDDIQAH',
+  'ATTAMIMI', 'AZ-ZAHRA', 'HAKIMAH', 'HIDAYAT', 'IBRAHIM', 'KURNIAWATI', 'MAULIDINA', 'MUBAROKAH',
+  'MUSTAFA', 'NURULAINI', 'PRATIWI', 'PUTRI', 'RAHMAH', 'RAMADHANI', 'SALSABILA', 'SETIAWATI',
+  'SUHADAH', 'SYAHRANI', 'SYARIFAH', 'UTAMI', 'WIJAYANTI', 'WIRATAMA', 'YULIANTI', 'ZULKARNAEN'
 ];
 
 function generateSantriDataset(): Santri[] {
   const result: Santri[] = [];
 
-  // 1. Add MA Santri (Unit MA sudah memiliki data santri - 163 santri)
+  // 1. Add MA Santri Putri (Unit MA sudah memiliki data santri putri - 163 santri)
   result.push(...specificMASantri);
   const maClasses = ['10.1', '10.2', '10.3', '11.1', '11.2', '11.3', '12.1', '12.2', '12.3'];
   let nameIndex = 0;
@@ -342,33 +351,33 @@ function generateSantriDataset(): Santri[] {
       nama: `${fn} ${ln}`,
       kelas: kl,
       unit: 'MA',
+      lingkungan: 'PUTRI',
       totalPoin: randPoin,
       statusPembinaan: status,
       musyrifId,
       musyrifNama,
-      asrama: `Asrama MA Blok ${(idNum % 3) + 1}`,
-      kamar: `Kamar 0${(idNum % 6) + 1}`
+      asrama: `Asrama Putri Blok ${(idNum % 3) + 1}`,
+      kamar: `Kamar Putri 0${(idNum % 6) + 1}`
     });
     nameIndex++;
   }
 
-  // Unit SMP dan SMA dimulai dalam kondisi KOSONG murni (tanpa data fiktif / dummy),
-  // siap diisi dengan data asli via Tambah Santri Manual atau Import Excel.
   return result;
 }
 
 export const initialSantriList: Santri[] = generateSantriDataset();
 
 export const initialRiwayatPelanggaran: RiwayatPelanggaran[] = [
-  // MA Violations
+  // MA Putri Violations
   {
     id: 'log-ma-001',
     tanggal: '25 Agu 2026, 16.38 WIB',
     timestamp: '2026-08-25T16:38:00',
     santriId: 's-ma-002',
-    santriNama: 'ABDUR ROFI',
+    santriNama: 'AISYAH AZ-ZAHRA',
     santriKelas: '11.1',
     santriUnit: 'MA',
+    lingkungan: 'PUTRI',
     jenisPelanggaranId: 'p-002',
     jenisPelanggaranNama: 'Membawa Smartphone/Elektronik',
     poin: 50,
@@ -383,15 +392,16 @@ export const initialRiwayatPelanggaran: RiwayatPelanggaran[] = [
     tanggal: '6 Agu 2026, 23.15 WIB',
     timestamp: '2026-08-06T23:15:00',
     santriId: 's-ma-006',
-    santriNama: 'HAFIZH KHAIRUN NIAM',
+    santriNama: 'HANIFAH SHALIHAH',
     santriKelas: '10.1',
     santriUnit: 'MA',
-    jenisPelanggaranId: 'p-009',
-    jenisPelanggaranNama: 'Membawa, memiliki, menyimpan, dan/atau menyalakan bahan peledak/petasan',
-    poin: 100,
-    hukuman: 'Barang disita dan dimusnahkan',
+    lingkungan: 'PUTRI',
+    jenisPelanggaranId: 'p-016',
+    jenisPelanggaranNama: 'Terlambat masuk asrama / melanggar jam malam',
+    poin: 15,
+    hukuman: 'Pembersihan aula & asrama santri',
     status: 'Selesai',
-    catatan: 'Petasan dimusnahkan bersama keamanan pondok.',
+    catatan: 'Telah melaksanakan pembersihan aula asrama putri.',
     pencatat: 'Ust. Wildan Fanani, Lc',
     pencatatId: 'usr-koor-ma'
   },
@@ -403,10 +413,11 @@ export const initialRiwayatPelanggaran: RiwayatPelanggaran[] = [
     santriNama: 'NADIA TSURAYYA ABDILLAH',
     santriKelas: '11.2',
     santriUnit: 'MA',
+    lingkungan: 'PUTRI',
     jenisPelanggaranId: 'p-010',
     jenisPelanggaranNama: 'Berkomunikasi dengan lawan jenis yang bukan mahram',
     poin: 50,
-    hukuman: '-',
+    hukuman: 'Surat Peringatan & Konseling',
     status: 'Belum Selesai',
     catatan: 'Surat panggilan wali santri sudah disiapkan.',
     pencatat: 'Ust. Wildan Fanani, Lc',
@@ -420,10 +431,11 @@ export const initialRiwayatPelanggaran: RiwayatPelanggaran[] = [
     santriNama: 'TSALISA HANINA DHIYA ULHAQ',
     santriKelas: '12.3',
     santriUnit: 'MA',
+    lingkungan: 'PUTRI',
     jenisPelanggaranId: 'p-011',
     jenisPelanggaranNama: 'Menggunakan laptop untuk menonton, chatting, dan browsing terlarang',
     poin: 50,
-    hukuman: '-',
+    hukuman: 'Penyitaan laptop selama 1 bulan',
     status: 'Belum Selesai',
     catatan: 'Laptop dititipkan di ruang Kasie.',
     pencatat: 'Ust. Wildan Fanani, Lc',
@@ -433,16 +445,17 @@ export const initialRiwayatPelanggaran: RiwayatPelanggaran[] = [
     id: 'log-ma-005',
     tanggal: '6 Agu 2026, 22.26 WIB',
     timestamp: '2026-08-06T22:26:00',
-    santriId: 's-ma-010',
-    santriNama: 'MUHAMMAD SIRAJ',
-    santriKelas: '10.1',
+    santriId: 's-ma-007',
+    santriNama: 'HAYA RAIHANAH',
+    santriKelas: '12.3',
     santriUnit: 'MA',
-    jenisPelanggaranId: 'p-012',
-    jenisPelanggaranNama: 'Membawa, memiliki, menyimpan, menggunakan senjata tajam',
-    poin: 70,
-    hukuman: 'Barang menjadi sitaan tetap',
+    lingkungan: 'PUTRI',
+    jenisPelanggaranId: 'p-002',
+    jenisPelanggaranNama: 'Membawa Smartphone/Elektronik',
+    poin: 50,
+    hukuman: 'Penyitaan barang & Surat Peringatan',
     status: 'Selesai',
-    catatan: 'Barang berupa pisau lipat tanpa izin.',
+    catatan: 'HP telah diserahkan ke musyrifah.',
     pencatat: 'Ust. Ahmad Fauzan, S.Pd',
     pencatatId: 'usr-musy-ma1'
   },
@@ -451,34 +464,18 @@ export const initialRiwayatPelanggaran: RiwayatPelanggaran[] = [
     tanggal: '5 Agu 2026, 20.24 WIB',
     timestamp: '2026-08-05T20:24:00',
     santriId: 's-ma-004',
-    santriNama: 'DAMARGALIH JAFAR MOHAMMAD',
+    santriNama: 'DURRATUN NASIHAH',
     santriKelas: '10.1',
     santriUnit: 'MA',
-    jenisPelanggaranId: 'p-009',
-    jenisPelanggaranNama: 'Membawa, memiliki, menyimpan, dan/atau menyalakan bahan peledak/petasan',
-    poin: 100,
-    hukuman: 'Barang disita dan dimusnahkan',
+    lingkungan: 'PUTRI',
+    jenisPelanggaranId: 'p-015',
+    jenisPelanggaranNama: 'Keluar area pesantren tanpa izin/kabur',
+    poin: 75,
+    hukuman: 'Skorsing 1 minggu & SP2',
     status: 'Selesai',
-    catatan: 'Dilakukan pembinaan langsung di kantor Kasie.',
+    catatan: 'Dilakukan pembinaan langsung di kantor Kasie Putri.',
     pencatat: 'Ust. Wildan Fanani, Lc',
     pencatatId: 'usr-koor-ma'
-  },
-  {
-    id: 'log-ma-007',
-    tanggal: '5 Agu 2026, 19.50 WIB',
-    timestamp: '2026-08-05T19:50:00',
-    santriId: 's-ma-001',
-    santriNama: 'ABDILLAH AKMAL AL FATIH',
-    santriKelas: '10.1',
-    santriUnit: 'MA',
-    jenisPelanggaranId: 'p-013',
-    jenisPelanggaranNama: 'Melakukan perbuatan zina, pelecehan seksual atau asusila',
-    poin: 100,
-    hukuman: 'Dikeluarkan',
-    status: 'Selesai',
-    catatan: 'Keputusan sidang dewan guru dan pimpinan pesantren.',
-    pencatat: 'Ust. Ahmad Fauzan, S.Pd',
-    pencatatId: 'usr-musy-ma1'
   }
 ];
 
@@ -663,47 +660,50 @@ export const initialMasterPembinaanList: MasterPembinaan[] = [
 export const initialPembinaanRecords = [
   {
     id: 'pbn-001',
-    santriId: 's-ma-001',
-    santriNama: 'MUHAMMAD ILHAM FAHREZI',
-    santriKelas: '11.1',
+    santriId: 's-ma-011',
+    santriNama: 'NADIA TSURAYYA ABDILLAH',
+    santriKelas: '11.2',
     santriUnit: 'MA' as const,
-    pelanggaranTerkaitId: 'plg-031',
-    pelanggaranTerkaitJenis: 'Merokok atau membawa rokok/vape',
+    lingkungan: 'PUTRI' as const,
+    pelanggaranTerkaitId: 'log-ma-003',
+    pelanggaranTerkaitJenis: 'Berkomunikasi dengan lawan jenis yang bukan mahram',
     jenisPembinaan: 'Tugas pembinaan & Hafalan',
     tanggal: '05 Sep 2026',
     tanggalTargetSelesai: '12 Sep 2026',
     pembina: 'Ust. Wildan Fanani, Lc',
     pembinaId: 'usr-koor-ma',
-    catatan: 'Menghafal Surat Al-Mulk ayat 1-15 dan membersihkan masjid pondok selama 3 hari.',
+    catatan: 'Menghafal Surat Al-Mulk ayat 1-15 dan tilawah mandiri.',
     status: 'PROSES' as const,
     created_at: '2026-09-05T08:00:00Z'
   },
   {
     id: 'pbn-002',
-    santriId: 's-ma-004',
-    santriNama: 'RIZKY RAMADHAN',
-    santriKelas: '10.2',
+    santriId: 's-ma-013',
+    santriNama: 'TSALISA HANINA DHIYA ULHAQ',
+    santriKelas: '12.3',
     santriUnit: 'MA' as const,
-    pelanggaranTerkaitId: 'plg-024',
-    pelanggaranTerkaitJenis: 'Membawa / menggunakan HP tanpa izin',
-    jenisPembinaan: 'Surat Pernyataan & Kebersihan',
+    lingkungan: 'PUTRI' as const,
+    pelanggaranTerkaitId: 'log-ma-004',
+    pelanggaranTerkaitJenis: 'Menggunakan laptop untuk browsing terlarang',
+    jenisPembinaan: 'Surat Pernyataan & Konseling',
     tanggal: '02 Sep 2026',
     tanggalTargetSelesai: '06 Sep 2026',
-    pembina: 'Ust. Ahmad Fauzan, S.Pd',
-    pembinaId: 'usr-musy-ma1',
-    catatan: 'HP diamankan selama 1 bulan. Santri membuat surat pernyataan tidak mengulangi.',
+    pembina: 'Ust. Wildan Fanani, Lc',
+    pembinaId: 'usr-koor-ma',
+    catatan: 'Laptop diamankan selama 1 bulan. Santri membuat surat pernyataan tidak mengulangi.',
     status: 'SELESAI' as const,
     tanggalSelesai: '06 Sep 2026',
     created_at: '2026-09-02T10:30:00Z'
   },
   {
     id: 'pbn-003',
-    santriId: 's-ma-002',
-    santriNama: 'ACHMAD FADILLAH',
-    santriKelas: '10.1',
+    santriId: 's-ma-007',
+    santriNama: 'HAYA RAIHANAH',
+    santriKelas: '12.3',
     santriUnit: 'MA' as const,
-    pelanggaranTerkaitId: 'plg-001',
-    pelanggaranTerkaitJenis: 'Terlambat shalat berjamaah di masjid',
+    lingkungan: 'PUTRI' as const,
+    pelanggaranTerkaitId: 'log-ma-005',
+    pelanggaranTerkaitJenis: 'Membawa Smartphone/Elektronik',
     jenisPembinaan: 'Teguran/Nasihat & Istighfar',
     tanggal: '08 Sep 2026',
     tanggalTargetSelesai: '10 Sep 2026',

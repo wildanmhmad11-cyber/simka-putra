@@ -23,9 +23,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return 'light';
       }
     } catch (e) {
-      // fallback to light
+      // fallback
     }
-    return 'light'; // Default is TERANG / LIGHT
+    return 'dark'; // Default is GELAP / DARK jika belum ada preferensi tersimpan
   });
 
   // Default is 'light'. If user chooses 'dark', it applies to Login and the app.
